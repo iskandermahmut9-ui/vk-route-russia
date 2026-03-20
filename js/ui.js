@@ -66,12 +66,13 @@ window.UI = {
     },
 
     updateResources: function(coins, gas, food, wake, hp, xp) {
-        document.getElementById('val-coins').innerText = Math.round(coins);
-        document.getElementById('val-gas').innerText = Math.round(gas);
-        document.getElementById('val-food').innerText = Math.round(food);
-        document.getElementById('val-wake').innerText = Math.round(wake);
-        document.getElementById('val-hp').innerText = Math.round(hp); // Добавили HP обратно
-        document.getElementById('val-xp').innerText = Math.round(xp);
+        // Защита: обновляем только если элемент существует на странице
+        if(document.getElementById('val-coins')) document.getElementById('val-coins').innerText = Math.round(coins);
+        if(document.getElementById('val-gas')) document.getElementById('val-gas').innerText = Math.round(gas);
+        if(document.getElementById('val-food')) document.getElementById('val-food').innerText = Math.round(food);
+        if(document.getElementById('val-wake')) document.getElementById('val-wake').innerText = Math.round(wake);
+        if(document.getElementById('val-hp')) document.getElementById('val-hp').innerText = Math.round(hp);
+        if(document.getElementById('val-xp')) document.getElementById('val-xp').innerText = Math.round(xp);
     },
 
     openCityPanel: function(cityData) {
