@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Маршруты: Россия 🚙 | VK Mini App</title>
+    <title>Маршруты: Россия | VK Mini App</title>
     
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Russo+One&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="vk-dark">
@@ -18,23 +17,22 @@
 <header class="header">
     <div class="header-left">
         <div class="logo">МАРШРУТЫ: РОССИЯ 🚙</div>
+        <button id="btn-album" class="btn-icon" title="Мой Альбом"><i class="fa-solid fa-images"></i> Альбом</button>
     </div>
     
     <div class="header-center" id="resource-panel" style="display: none;">
-        <div class="res-item" title="Монеты"><i class="fa-solid fa-coins" style="color: #FFD700;"></i> <span id="val-coins">5000</span></div>
-        <div class="res-item" title="Бензин"><i class="fa-solid fa-gas-pump" style="color: #FF5722;"></i> <span id="val-gas">100</span>%</div>
-        <div class="res-item" title="Еда"><i class="fa-solid fa-utensils" style="color: #8BC34A;"></i> <span id="val-food">100</span>%</div>
-        <div class="res-item" title="Бодрость"><i class="fa-solid fa-bed" style="color: #2196F3;"></i> <span id="val-wake">100</span>%</div>
-        <div class="res-item" title="Прочность"><i class="fa-solid fa-wrench" style="color: #4CAF50;"></i> <span id="val-hp">100</span>%</div>
-        <div class="res-item xp-item" title="Очки блогера"><i class="fa-solid fa-camera" style="color: #9C27B0;"></i> <span id="val-xp">0</span> XP</div>
+        <div class="res-item" title="Монеты"><i class="fa-solid fa-coins" style="color: #FFD700;"></i> <span id="val-coins">0</span></div>
+        <div class="res-item" title="Бензин"><i class="fa-solid fa-gas-pump" style="color: #FF5722;"></i> <span id="val-gas">0</span> л.</div>
+        <div class="res-item" title="Еда"><i class="fa-solid fa-utensils" style="color: #8BC34A;"></i> <span id="val-food">0</span>%</div>
+        <div class="res-item" title="Бодрость"><i class="fa-solid fa-bed" style="color: #2196F3;"></i> <span id="val-wake">0</span>%</div>
+        <div class="res-item" title="Прочность"><i class="fa-solid fa-wrench" style="color: #4CAF50;"></i> <span id="val-hp">0</span>%</div>
     </div>
 
     <div class="header-right">
         <div id="player-profile" class="player-profile">
             <span id="player-name">Загрузка...</span>
-            <img id="player-avatar" src="assets/ui/default_avatar.png" alt="Аватар">
+            <img id="player-avatar" src="assets/ui/default_avatar.png" alt="">
         </div>
-        <button id="btn-close-app" class="btn-icon-close" title="Закрыть приложение"><i class="fa-solid fa-xmark"></i></button>
     </div>
 </header>
 
@@ -42,14 +40,8 @@
     <div class="sidebar" id="game-panel">
         <div class="mobile-drag-handle"></div>
 
-        <div class="status-panel">
-            <div id="status-text">
-                <i class="fa-solid fa-map-location-dot"></i> Выберите город для СТАРТА экспедиции.
-            </div>
-            <div id="trip-stats" style="display: none; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 10px; padding-top: 10px; font-size: 11px; color: #aaa; font-weight: bold;">
-                <span>🛣️ Пройдено: <span id="stat-km" style="color:#fff;">0</span> км</span>
-                <span>⏱️ Время: <span id="stat-hours" style="color:#fff;">0</span> ч.</span>
-            </div>
+        <div id="status-text" class="status-panel">
+            <i class="fa-solid fa-map-location-dot"></i> Выберите город на карте.
         </div>
 
         <div id="city-info" style="display: none;">
@@ -57,19 +49,40 @@
             <span id="city-tier" class="tier-badge">Уровень</span>
             <p id="city-fact" class="city-fact"></p>
             
-            <div class="cost-box">
-                <div class="cost-row">
-                    <span><i class="fa-solid fa-bed"></i> Ночлег:</span>
-                    <span class="cost-val"><span id="cost-hotel">0</span> монет</span>
+            <div id="city-actions" class="cost-box">
+                <h3 style="margin-top:0; color:#FF5722;">Восполнение ресурсов</h3>
+                
+                <div class="slider-group">
+                    <div class="slider-header"><span>🛏️ Ночлег (<span id="out-hotel">0</span> ₽)</span> <span id="gain-hotel" class="gain-text">+0%</span></div>
+                    <input type="range" id="sl-hotel" min="0" max="100" value="0">
                 </div>
-                <div class="cost-row">
-                    <span><i class="fa-solid fa-ticket"></i> Экскурсии:</span>
-                    <span class="cost-val"><span id="cost-exc">0</span> монет</span>
-                </div>
-                <button class="btn-action" id="btn-pay-city">ОПЛАТИТЬ И ОТДОХНУТЬ</button>
-            </div>
 
-            <div id="quests-container"></div>
+                <div class="slider-group">
+                    <div class="slider-header"><span>🍔 Еда (<span id="out-food">0</span> ₽)</span> <span id="gain-food" class="gain-text">+0%</span></div>
+                    <input type="range" id="sl-food" min="0" max="100" value="0">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header"><span>⛽ Бензин (<span id="out-gas">0</span> ₽)</span> <span id="gain-gas" class="gain-text">+0 л.</span></div>
+                    <input type="range" id="sl-gas" min="0" max="100" value="0">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header"><span>🔧 Ремонт (<span id="out-hp">0</span> ₽)</span> <span id="gain-hp" class="gain-text">+0%</span></div>
+                    <input type="range" id="sl-hp" min="0" max="100" value="0">
+                </div>
+
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="chk-exc"> 🎫 Взять экскурсию (<span id="price-exc">0</span> ₽)</label>
+                    <p style="font-size:10px; color:#aaa; margin:5px 0 0 0;">*Необходимо для получения Карточки Города</p>
+                </div>
+
+                <div style="margin-top: 15px; text-align: right; font-size: 16px; font-weight: bold;">
+                    Итого: <span id="total-bill" style="color:#FF5722;">0</span> ₽
+                </div>
+                
+                <button class="btn-action" id="btn-pay-city" style="margin-top: 15px;">ОПЛАТИТЬ</button>
+            </div>
             
             <button class="btn-action btn-ad" id="btn-city-ad" style="margin-top: 10px;">
                 <i class="fa-solid fa-play"></i> Реклама (+500 монет)
@@ -85,43 +98,66 @@
         <div class="modal-head" id="modal-title">Внимание</div>
         <div id="modal-text" style="margin-bottom: 20px; font-size: 14px; line-height: 1.5;"></div>
         <div style="display: flex; gap: 10px; justify-content: center;">
-            <button class="btn-action" id="btn-modal-ok">ПОНЯТНО</button>
-            <button class="btn-action" id="btn-modal-cancel" style="background: #444; display: none;">ОТМЕНА</button>
+            <button class="btn-action" id="btn-modal-ok">ДА</button>
+            <button class="btn-action" id="btn-modal-cancel" style="background: #444;">ОТМЕНА</button>
         </div>
     </div>
 </div>
 
-<div id="onboarding-modal" class="modal-overlay">
-    <div class="modal-box" style="text-align: left; max-width: 500px;">
-        <div class="modal-head" style="text-align: center; color: var(--accent);">МАРШРУТЫ: РОССИЯ 🚙</div>
-        <p style="font-size: 14px; line-height: 1.5; margin-bottom: 15px;">Добро пожаловать в симулятор автопутешественника! Ваша цель — исследовать страну, выживать на трассе и стать топовым тревел-блогером.</p>
-        <ul style="font-size: 13px; line-height: 1.6; color: var(--text-dim); padding-left: 20px; margin-bottom: 20px;">
-            <li>⛽ <b>Ресурсы:</b> Следите за бензином, едой, бодростью и деньгами.</li>
-            <li>❓ <b>Квесты:</b> Отвечайте на вопросы в городах, чтобы получать монеты от спонсоров.</li>
-            <li>⚠️ <b>Случайные события:</b> На трассе может пробить колесо или встретиться красивый закат. Выбирайте с умом!</li>
-            <li>📺 <b>Помощь:</b> Закончились деньги? Жмите кнопку рекламы для получения бонуса!</li>
-        </ul>
-        <button class="btn-action" id="btn-close-onboarding">ВЫБРАТЬ МАШИНУ И НАЧАТЬ</button>
+<div id="difficulty-modal" class="modal-overlay" style="display:flex;">
+    <div class="modal-box" style="max-width: 600px;">
+        <div class="modal-head">ВЫБЕРИТЕ СЛОЖНОСТЬ</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div class="diff-card" onclick="Game.selectDifficulty('normal')">
+                <h3>Обычная</h3><p>Современные авто. Редкие поломки, нормальный расход.</p>
+            </div>
+            <div class="diff-card" onclick="Game.selectDifficulty('hard')">
+                <h3 style="color:#FF9800;">Сложная</h3><p>Отечественная классика. Частые поломки, большой расход.</p>
+            </div>
+            <div class="diff-card" onclick="Game.selectDifficulty('ultra')">
+                <h3 style="color:#F44336;">Ультра-Хардкор</h3><p>Велосипед. Нет бензина, но еда улетает мгновенно.</p>
+            </div>
+        </div>
     </div>
 </div>
 
 <div id="garage-modal" class="modal-overlay">
     <div class="modal-box" style="max-width: 600px;">
-        <div class="modal-head">ВЫБЕРИТЕ АВТОМОБИЛЬ</div>
-        <div id="garage-list" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-            </div>
+        <div class="modal-head">ВАШ ТРАНСПОРТ</div>
+        <div id="garage-list" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;"></div>
+    </div>
+</div>
+
+<div id="mode-modal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-head">РЕЖИМ ИГРЫ</div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn-action" onclick="Game.selectMode('open')">Свободное путешествие</button>
+            <button class="btn-action" style="background:#555;" onclick="alert('Квесты в разработке. Выберите Свободное.')">Пройти Квест (Скоро)</button>
+        </div>
+    </div>
+</div>
+
+<div id="quest-modal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-head" style="color:#FFD700;">ВОПРОС ГОРОДА</div>
+        <div id="quest-text" style="font-size: 16px; margin-bottom: 20px;"></div>
+        <div id="quest-answers" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    </div>
+</div>
+
+<div id="album-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+        <div class="modal-head">МОЙ АЛЬБОМ ДОСТИЖЕНИЙ</div>
+        <p style="font-size: 12px; color:#aaa;">Соберите ночлег и экскурсию в городе, чтобы получить карточку!</p>
+        <div id="album-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 20px;"></div>
+        <button class="btn-action" onclick="document.getElementById('album-modal').style.display='none'" style="margin-top:20px;">ЗАКРЫТЬ</button>
     </div>
 </div>
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="js/vk_api.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/data_loader.js"></script>
-<script src="js/engine.js"></script>
-<script src="js/game_loop.js"></script>
-<script src="js/events.js"></script>
-<script src="js/app.js"></script>
-
+<script src="js/data.js"></script>
+<script src="js/game.js"></script>
 </body>
 </html>

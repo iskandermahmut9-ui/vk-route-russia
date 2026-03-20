@@ -1,135 +1,491 @@
-:root {
+/* =========================================
+   БАЗОВЫЕ ПЕРЕМЕННЫЕ И ТЕМА
+   ========================================= */
+:root { 
     --bg-dark: #141414; 
     --header-bg: #181818; 
     --accent: #FF5722; 
-    --text-white: #ffffff;
-    --text-dim: #cccccc;
-    --modal-bg: #1e1e1e;
+    --text-white: #ffffff; 
+    --text-dim: #cccccc; 
+    --modal-bg: #1e1e1e; 
     --header-h: 70px; 
-    --sidebar-w: 380px;
+    --sidebar-w: 420px; 
 }
 
 body { 
-    margin: 0; font-family: 'Montserrat', sans-serif; 
-    height: 100vh; display: flex; flex-direction: column; 
-    background-color: var(--bg-dark); color: var(--text-white); overflow: hidden;
+    margin: 0; 
+    font-family: 'Montserrat', sans-serif; 
+    height: 100vh; 
+    display: flex; 
+    flex-direction: column; 
+    background-color: var(--bg-dark); 
+    color: var(--text-white); 
+    overflow: hidden; 
 }
 
-/* Убираем Leaflet аттрибуцию (Модератор п.1) */
-.leaflet-control-attribution { display: none !important; }
-
-/* Кастомный маркер города (желтый с черной обводкой) */
-.city-marker {
-    background: #FFD700; border: 2px solid #000000;
-    border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    cursor: pointer; transition: 0.2s;
+/* Убираем копирайт Leaflet */
+.leaflet-control-attribution { 
+    display: none !important; 
 }
-.city-marker:hover { transform: scale(1.2); background: #ffffff; }
 
-/* Шапка */
-.header {
-    background: var(--header-bg); height: var(--header-h);
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 20px; border-bottom: 1px solid rgba(255,255,255, 0.05); z-index: 1000;
+/* =========================================
+   ШАПКА И РЕСУРСЫ
+   ========================================= */
+.header { 
+    background: var(--header-bg); 
+    height: var(--header-h); 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    padding: 0 30px; 
+    border-bottom: 1px solid rgba(255,255,255, 0.05); 
+    z-index: 1000; 
+    flex-shrink: 0;
 }
-.logo { font-family: 'Russo One', sans-serif; color: var(--accent); font-size: 16px; white-space: nowrap; }
 
-/* Панель ресурсов */
-.header-center { display: flex; gap: 15px; font-weight: 800; font-size: 12px; background: rgba(0,0,0,0.3); padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); overflow-x: auto; max-width: 50%; scrollbar-width: none; }
-.header-center::-webkit-scrollbar { display: none; }
-.res-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.xp-item { color: #9C27B0; border-left: 1px solid #444; padding-left: 10px; }
+.logo { 
+    font-family: 'Russo One', sans-serif; 
+    color: var(--accent); 
+    font-size: 20px; 
+    margin-right: 20px; 
+}
 
-/* Профиль и кнопка выхода */
-.header-right { display: flex; align-items: center; gap: 15px; }
-.player-profile { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; }
-.player-profile img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; }
-.btn-icon-close { background: none; border: none; color: #666; font-size: 20px; cursor: pointer; padding: 5px; transition: 0.2s; }
-.btn-icon-close:hover { color: var(--accent); transform: scale(1.1); }
+.btn-icon { 
+    background: rgba(255,255,255,0.1); 
+    border: none; 
+    color: #fff; 
+    padding: 8px 15px; 
+    border-radius: 20px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    transition: 0.2s; 
+    font-size: 12px; 
+}
 
-/* Лэйаут (Десктоп) */
-.main-container { display: flex; flex: 1; position: relative; height: calc(100vh - var(--header-h)); }
-.sidebar { width: var(--sidebar-w); background: rgba(20, 20, 20, 0.98); border-right: 1px solid #333; height: 100%; padding: 25px; box-sizing: border-box; overflow-y: auto; z-index: 10; transition: transform 0.3s ease; }
-#map { flex: 1; height: 100%; background: #222; }
+.btn-icon:hover { 
+    background: var(--accent); 
+}
 
-/* Мобильный хэндл (скрыт на десктопе) */
-.mobile-drag-handle { display: none; }
+.header-center { 
+    display: flex; 
+    gap: 15px; 
+    font-weight: 800; 
+    font-size: 13px; 
+    background: rgba(0,0,0,0.3); 
+    padding: 8px 20px; 
+    border-radius: 20px; 
+    border: 1px solid rgba(255,255,255,0.1); 
+}
 
-/* Визуал города */
-.city-title { margin-top:0; color:var(--accent); font-family:'Russo One', sans-serif; font-size: 24px; }
-.status-panel { background: rgba(255, 87, 34, 0.1); border-left: 4px solid var(--accent); padding: 15px; border-radius: 6px; font-size: 13px; line-height: 1.5; }
-.tier-badge { display: inline-block; padding: 5px 12px; border-radius: 6px; font-size: 10px; font-weight: 900; background: #e74c3c; text-transform: uppercase; letter-spacing: 1px; }
-.cost-box { background: rgba(0,0,0,0.3); border: 1px solid #333; padding: 15px; border-radius: 12px; margin: 15px 0; }
-.cost-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 600;}
-.cost-val { color: var(--accent); font-weight: 800; }
-.city-fact { font-size: 12px; color: var(--text-dim); margin: 10px 0; line-height: 1.4; }
+.res-item { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+}
 
-/* Кнопки */
-.btn-action { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; transition: 0.2s; font-family: 'Montserrat', sans-serif; text-transform: uppercase; }
-.btn-action:hover { background: #e64a19; transform: translateY(-2px); }
-.btn-action:active { transform: translateY(0); }
-.btn-ad { background: #2e7d32; margin-top: 10px; }
-.btn-ad:hover { background: #1b5e20; }
+.header-right { 
+    display: flex; 
+    align-items: center; 
+}
 
-/* Модальные окна */
-.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px); }
-.modal-box { background: var(--modal-bg); padding: 30px; border-radius: 20px; border: 1px solid #333; width: 100%; max-width: 420px; text-align: center; color: var(--text-white); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-.modal-head { font-weight: 900; font-size: 22px; margin-bottom: 15px; font-family: 'Russo One', sans-serif; text-transform: uppercase; }
+.player-profile { 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    font-size: 12px; 
+    font-weight: 700; 
+}
 
-/* Гараж */
-.car-card { background: #252525; border: 2px solid #333; border-radius: 12px; padding: 15px; cursor: pointer; transition: 0.2s; text-align: center; }
-.car-card:hover { border-color: var(--accent); background: rgba(255, 87, 34, 0.1); }
-.car-card h4 { margin: 0 0 10px 0; color: var(--accent); font-weight: 800; font-size: 14px;}
-.car-card p { font-size: 11px; margin: 5px 0; color: #aaa; }
+.player-profile img { 
+    width: 36px; 
+    height: 36px; 
+    border-radius: 50%; 
+    border: 2px solid var(--accent); 
+    object-fit: cover;
+}
 
-/* Тосты */
-.toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.toast { background: var(--accent); color: #fff; padding: 12px 20px; border-radius: 8px; font-weight: 800; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); animation: fadein 0.3s, fadeout 0.3s 2.7s; text-align: center; }
+/* =========================================
+   ОСНОВНОЙ ЛЭЙАУТ (КАРТА И ПАНЕЛЬ)
+   ========================================= */
+.main-container { 
+    display: flex; 
+    flex: 1; 
+    position: relative; 
+    height: calc(100vh - var(--header-h)); 
+}
+
+.sidebar { 
+    width: var(--sidebar-w); 
+    background: rgba(20, 20, 20, 0.98); 
+    border-right: 1px solid #333; 
+    height: 100%; 
+    padding: 25px; 
+    box-sizing: border-box; 
+    overflow-y: auto; 
+    z-index: 10; 
+    transition: transform 0.3s ease; 
+}
+
+/* Кастомизация скроллбара для боковой панели */
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+#map { 
+    flex: 1; 
+    height: 100%; 
+    background: #eee; /* Светлый фон для загрузки карты OSM */
+}
+
+.mobile-drag-handle { 
+    display: none; 
+}
+
+/* =========================================
+   ИНТЕРФЕЙС ГОРОДА
+   ========================================= */
+.city-title { 
+    margin-top: 0; 
+    color: var(--accent); 
+    font-family: 'Russo One', sans-serif; 
+    font-size: 28px; 
+}
+
+.status-panel { 
+    background: rgba(255, 87, 34, 0.1); 
+    border-left: 4px solid var(--accent); 
+    padding: 15px; 
+    border-radius: 6px; 
+    font-size: 14px; 
+    line-height: 1.5; 
+    margin-bottom: 20px; 
+}
+
+.tier-badge { 
+    display: inline-block; 
+    padding: 6px 12px; 
+    border-radius: 6px; 
+    font-size: 11px; 
+    font-weight: 900; 
+    background: #e74c3c; 
+    text-transform: uppercase; 
+    margin-bottom: 15px; 
+}
+
+.city-fact {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+/* =========================================
+   ПОЛЗУНКИ ЭКОНОМИКИ
+   ========================================= */
+.cost-box { 
+    background: rgba(0,0,0,0.4); 
+    border: 1px solid #333; 
+    padding: 20px; 
+    border-radius: 12px; 
+}
+
+.slider-group { 
+    margin-bottom: 20px; 
+}
+
+.slider-header { 
+    display: flex; 
+    justify-content: space-between; 
+    font-size: 13px; 
+    font-weight: 700; 
+    margin-bottom: 8px; 
+}
+
+.gain-text { 
+    color: #4CAF50; 
+}
+
+input[type=range] { 
+    width: 100%; 
+    accent-color: var(--accent); 
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    outline: none;
+}
+
+.checkbox-group { 
+    font-size: 14px; 
+    font-weight: bold; 
+    margin-top: 20px; 
+    border-top: 1px dashed #444; 
+    padding-top: 15px; 
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+/* =========================================
+   КНОПКИ
+   ========================================= */
+.btn-action { 
+    width: 100%; 
+    padding: 15px; 
+    background: var(--accent); 
+    color: white; 
+    border: none; 
+    border-radius: 8px; 
+    font-weight: 800; 
+    font-size: 14px; 
+    cursor: pointer; 
+    transition: 0.2s; 
+    font-family: 'Montserrat', sans-serif; 
+    text-transform: uppercase; 
+}
+
+.btn-action:hover { 
+    background: #e64a19; 
+    transform: translateY(-2px); 
+}
+
+.btn-action:active {
+    transform: translateY(0);
+}
+
+.btn-ad { 
+    background: #2e7d32; 
+}
+
+.btn-ad:hover {
+    background: #1b5e20;
+}
+
+/* =========================================
+   МОДАЛЬНЫЕ ОКНА И КАРТОЧКИ
+   ========================================= */
+.modal-overlay { 
+    display: none; 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: rgba(0,0,0,0.85); 
+    z-index: 9999; 
+    justify-content: center; 
+    align-items: center; 
+    padding: 20px; 
+    box-sizing: border-box; 
+    backdrop-filter: blur(5px);
+}
+
+.modal-box { 
+    background: var(--modal-bg); 
+    padding: 35px; 
+    border-radius: 20px; 
+    border: 1px solid #333; 
+    width: 100%; 
+    max-width: 450px; 
+    text-align: center; 
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+.modal-head { 
+    font-weight: 900; 
+    font-size: 24px; 
+    margin-bottom: 25px; 
+    font-family: 'Russo One', sans-serif; 
+    text-transform: uppercase; 
+}
+
+.diff-card, .car-card { 
+    background: #252525; 
+    border: 2px solid #333; 
+    border-radius: 12px; 
+    padding: 20px 15px; 
+    cursor: pointer; 
+    transition: 0.2s; 
+}
+
+.diff-card:hover, .car-card:hover { 
+    border-color: var(--accent); 
+    background: rgba(255, 87, 34, 0.1); 
+    transform: translateY(-3px);
+}
+
+.diff-card h3, .car-card h3 { 
+    margin: 0 0 10px 0; 
+    font-size: 16px;
+} 
+
+.diff-card p, .car-card p { 
+    font-size: 12px; 
+    color: #aaa; 
+    margin: 0; 
+    line-height: 1.4;
+}
+
+/* =========================================
+   АЛЬБОМ ДОСТИЖЕНИЙ
+   ========================================= */
+.album-card { 
+    background: #222; 
+    border: 2px solid #444; 
+    border-radius: 12px; 
+    padding: 15px 10px; 
+    text-align: center; 
+    transition: 0.3s;
+}
+
+.album-card.collected { 
+    border-color: #FFD700; 
+    background: rgba(255, 215, 0, 0.1); 
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
+
+.album-card i { 
+    font-size: 35px; 
+    margin-bottom: 12px; 
+    color: #555; 
+}
+
+.album-card.collected i { 
+    color: #FFD700; 
+}
+
+/* =========================================
+   МАРКЕРЫ НА КАРТЕ
+   ========================================= */
+.city-marker { 
+    background: #2196F3; 
+    border: 2px solid #fff; 
+    border-radius: 50%; 
+    box-shadow: 0 0 8px rgba(0,0,0,0.6); 
+    cursor: pointer; 
+    transition: 0.2s;
+}
+
+.city-marker.collected { 
+    background: #FFD700; 
+    border-color: #000; 
+}
+
+.city-marker.current { 
+    background: #FF5722; 
+    width: 24px !important; 
+    height: 24px !important; 
+    margin-left: -12px !important; 
+    margin-top: -12px !important; 
+    z-index: 1000 !important;
+    border: 3px solid #fff;
+}
+
+/* =========================================
+   УВЕДОМЛЕНИЯ (TOASTS)
+   ========================================= */
+.toast-container { 
+    position: fixed; 
+    bottom: 80px; 
+    left: 50%; 
+    transform: translateX(-50%); 
+    z-index: 10000; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    pointer-events: none;
+}
+
+.toast { 
+    background: var(--accent); 
+    color: #fff; 
+    padding: 14px 25px; 
+    border-radius: 8px; 
+    font-weight: 800; 
+    font-size: 14px; 
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5); 
+    animation: fadein 0.3s, fadeout 0.3s 2.7s; 
+    text-align: center;
+}
+
 @keyframes fadein { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeout { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
 
-/* VK Темы */
-body.vk-light { --bg-dark: #f0f2f5; --header-bg: #ffffff; --modal-bg: #ffffff; --text-white: #000000; --text-dim: #666666; color: #000; }
-body.vk-light .sidebar { background: #ffffff; border-color: #ddd; }
-body.vk-light .modal-box { border-color: #ddd; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-body.vk-light .cost-box { background: #f9f9f9; border-color: #eee; }
-body.vk-light .header-center { background: #f5f5f5; border-color: #ddd; color: #333;}
-body.vk-light .car-card { background: #f9f9f9; border-color: #ddd; }
-
-/* ================= АДАПТИВНОСТЬ (Мобильная версия) ================= */
-@media screen and (max-width: 768px) {
-    :root { --header-h: 60px; }
+/* =========================================
+   АДАПТИВНОСТЬ (МОБИЛЬНАЯ ВЕРСИЯ)
+   ========================================= */
+@media screen and (max-width: 900px) {
+    :root { 
+        --header-h: 60px; 
+    }
     
-    .header { padding: 0 10px; }
-    .logo { font-size: 12px; }
-    .header-right { gap: 5px; }
-    .player-profile span { display: none; } /* Прячем имя на мобильных */
+    .header {
+        padding: 0 15px;
+    }
     
-    .header-center { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); max-width: 95%; width: max-content; z-index: 1001; background: rgba(20,20,20,0.95); box-shadow: 0 5px 20px rgba(0,0,0,0.5); padding: 10px 15px; }
-
-    .main-container { flex-direction: column-reverse; }
+    .logo {
+        font-size: 16px;
+    }
     
-    /* Сайдбар превращается в Bottom Sheet */
+    /* Прячем ресурсы сверху, они переедут в интерфейс позже или будут вызываться кнопкой */
+    .header-center { 
+        display: none !important; 
+    } 
+    
+    .player-profile span {
+        display: none; /* Прячем имя, оставляем только аватарку */
+    }
+    
+    .main-container {
+        flex-direction: column-reverse;
+    }
+    
+    /* Сайдбар превращается во всплывающую шторку (Bottom Sheet) */
     .sidebar { 
-        position: absolute; bottom: 0; left: 0; width: 100%; height: auto; 
-        max-height: 70vh; border-right: none; border-top: 1px solid #333; 
-        border-radius: 20px 20px 0 0; transform: translateY(calc(100% - 40px)); /* Свернут, виден только хэндл */
-        padding: 15px 20px 80px 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); 
+        position: absolute; 
+        bottom: 0; 
+        left: 0; 
+        width: 100%; 
+        height: auto; 
+        max-height: 80vh; 
+        border-radius: 20px 20px 0 0; 
+        border-right: none;
+        border-top: 1px solid #333;
+        transform: translateY(calc(100% - 45px)); /* Торчит только ручка */
+        padding: 15px 20px 80px 20px; 
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.7); 
     }
     
-    /* Когда панель открыта (добавим класс в JS) */
-    .sidebar.open { transform: translateY(0); }
-
+    .sidebar.open { 
+        transform: translateY(0); 
+    }
+    
     .mobile-drag-handle { 
-        display: block; width: 40px; height: 4px; background: #666; 
-        margin: 0 auto 15px auto; border-radius: 2px; cursor: pointer; 
+        display: block; 
+        width: 50px; 
+        height: 5px; 
+        background: #666; 
+        margin: 0 auto 20px auto; 
+        border-radius: 3px; 
+        cursor: pointer;
     }
-
-    #map { width: 100%; height: 100%; }
     
-    /* Сдвигаем контролы Leaflet повыше, чтобы не перекрывались ресурсами */
-    .leaflet-bottom.leaflet-right { bottom: 70px !important; }
-}
-@media screen and (max-width: 768px) {
-    .sidebar { overflow-y: auto; padding-bottom: 90px !important; }
+    /* Перестраиваем гриды модалок в одну колонку */
+    .diff-card, .car-card { 
+        margin-bottom: 10px; 
+    }
+    
+    #difficulty-modal .modal-box div, 
+    #garage-list { 
+        grid-template-columns: 1fr !important; 
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+    
+    .leaflet-bottom.leaflet-right { 
+        bottom: 60px !important; /* Сдвигаем зум выше шторки */
+    }
 }
