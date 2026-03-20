@@ -9,7 +9,7 @@ window.Game = {
     init: function() {
         this.map = L.map('map', { zoomControl: false }).setView([55.75, 38.0], 6);
         L.control.zoom({position: 'topright'}).addTo(this.map);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(this.map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
 
         this.checkDailyBonus();
         this.renderMap();
@@ -21,7 +21,7 @@ window.Game = {
         let today = new Date().toDateString();
         if (last !== today) {
             this.state.coins += 1000;
-            this.state.coins += 200; // Бонус за группу ВК
+            this.state.coins += 200; // Условный бонус ВК
             localStorage.setItem('route_last_login', today);
             this.toast("Ежедневный бонус: +1200 монет (с учетом ВК)!");
         }
@@ -52,7 +52,7 @@ window.Game = {
         document.getElementById('mode-modal').style.display = 'none';
         document.getElementById('resource-panel').style.display = 'flex';
         this.updateTopUI();
-        this.toast("Кликните на город, с которого начнется путешествие!");
+        this.toast("Кликните на город для старта!");
     },
 
     renderMap: function() {
@@ -62,9 +62,8 @@ window.Game = {
             this.markers[c.id] = m;
 
             m.on('click', async () => {
-                if (!this.state.currentCity) {
-                    this.setStartCity(c);
-                } else {
+                if (!this.state.currentCity) this.setStartCity(c);
+                else {
                     if (this.state.currentCity.id === c.id) return;
                     this.confirmTravel(c);
                 }
@@ -81,8 +80,6 @@ window.Game = {
         document.getElementById('city-info').style.display = 'block';
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-fact').innerText = "Счастливого пути! Ваши ресурсы полны.";
-        
-        // ВАЖНО: Прячем ползунки трат в стартовом городе!
         document.getElementById('city-actions').style.display = 'none'; 
         
         if(window.innerWidth <= 768) document.getElementById('game-panel').classList.add('open');
@@ -97,7 +94,7 @@ window.Game = {
             const dist = data.routes[0].distance / 1000;
             const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
 
-            this.showConfirm(`Едем в ${targetCity.name}?`, `Расстояние: ${Math.round(dist)} км. Убедитесь, что хватит бензина.`, () => {
+            this.showConfirm(`Едем в ${targetCity.name}?`, `Расстояние: ${Math.round(dist)} км.`, () => {
                 this.executeTravel(targetCity, dist, routeCoords);
             });
         } catch(e) { this.toast("Ошибка прокладки маршрута"); }
@@ -149,46 +146,97 @@ window.Game = {
         });
     },
 
+    // ====================================================
+    // НОВАЯ ЛОГИКА ТРАТ (Дискретные шаги, а не проценты)
+    // ====================================================
     openCityUI: function(city) {
         document.getElementById('status-text').style.display = 'none';
-        document.getElementById('city-actions').style.display = 'block'; // Показываем ползунки
+        document.getElementById('city-actions').style.display = 'block';
         document.getElementById('city-info').style.display = 'block';
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
-        document.getElementById('city-fact').innerText = city.fact || "Вы прибыли в город!";
+        document.getElementById('city-fact').innerText = city.fact;
         
         const p = Data.prices[city.tier];
-        const maxGas = this.state.car.tank - this.state.gas;
         
-        this.setupSlider('hotel', p.hotel, 100 - this.state.wake, '%');
-        this.setupSlider('food', p.food, 100 - this.state.food, '%');
-        this.setupSlider('hp', p.repair, 100 - this.state.hp, '%');
-        this.setupSlider('gas', p.gasPerLiter * maxGas, maxGas, 'л.');
+        // 1. НОЧЛЕГ (3 шага: 0=В машине, 1=Мотель, 2=Отель)
+        let slHotel = document.getElementById('sl-hotel');
+        slHotel.min = 0; slHotel.max = 2; slHotel.step = 1; slHotel.value = 0;
+        
+        // 2. ЕДА (3 шага: 0=Голодать, 1=Перекус, 2=Обед)
+        let slFood = document.getElementById('sl-food');
+        slFood.min = 0; slFood.max = 2; slFood.step = 1; slFood.value = 0;
+        
+        // 3. БЕНЗИН (поштучно за 1 литр)
+        const maxGas = Math.floor(this.state.car.tank - this.state.gas);
+        let slGas = document.getElementById('sl-gas');
+        slGas.min = 0; slGas.max = maxGas; slGas.step = 1; slGas.value = 0;
+        
+        // 4. РЕМОНТ (поштучно за 1%)
+        const maxHp = Math.floor(100 - this.state.hp);
+        let slHp = document.getElementById('sl-hp');
+        slHp.min = 0; slHp.max = maxHp; slHp.step = 1; slHp.value = 0;
 
         document.getElementById('price-exc').innerText = p.exc;
         document.getElementById('chk-exc').checked = false;
 
-        this.calcTotal();
+        // Привязываем обработчики
+        slHotel.oninput = () => this.updateSlidersLogic(p);
+        slFood.oninput = () => this.updateSlidersLogic(p);
+        slGas.oninput = () => this.updateSlidersLogic(p);
+        slHp.oninput = () => this.updateSlidersLogic(p);
+
+        this.updateSlidersLogic(p); // Вызываем для первичной отрисовки 0
+        
         if(window.innerWidth <= 768) document.getElementById('game-panel').classList.add('open');
     },
 
-    setupSlider: function(id, maxPrice, maxGain, unit) {
-        let sl = document.getElementById(`sl-${id}`);
-        sl.max = Math.max(0, maxPrice); sl.value = 0;
-        document.getElementById(`out-${id}`).innerText = 0;
-        document.getElementById(`gain-${id}`).innerText = `+0${unit}`;
-        
-        sl.oninput = () => {
-            document.getElementById(`out-${id}`).innerText = sl.value;
-            let gain = maxPrice > 0 ? (sl.value / maxPrice) * maxGain : 0;
-            document.getElementById(`gain-${id}`).innerText = `+${Math.round(gain)}${unit}`;
-            this.calcTotal();
-        };
-    },
+    updateSlidersLogic: function(prices) {
+        // Логика НОЧЛЕГА
+        let hVal = parseInt(document.getElementById('sl-hotel').value);
+        let hCost = 0, hText = "";
+        this.tempHotelGain = 0; // Сохраняем во временную переменную для payCityBill
 
-    calcTotal: function() {
-        let sum = ['hotel','food','gas','hp'].reduce((acc, id) => acc + parseInt(document.getElementById(`sl-${id}`).value), 0);
-        if(document.getElementById('chk-exc').checked) sum += Data.prices[this.state.currentCity.tier].exc;
+        if (hVal === 0) {
+            hCost = 0; this.tempHotelGain = this.state.car.sleepBonus; hText = "В машине";
+        } else if (hVal === 1) {
+            hCost = Math.round(prices.hotel * 0.5); this.tempHotelGain = 60; hText = "Мотель";
+        } else if (hVal === 2) {
+            hCost = prices.hotel; this.tempHotelGain = 100; hText = "Отель";
+        }
+        document.getElementById('out-hotel').innerText = hCost;
+        document.getElementById('gain-hotel').innerText = `+${this.tempHotelGain}% (${hText})`;
+
+        // Логика ЕДЫ
+        let fVal = parseInt(document.getElementById('sl-food').value);
+        let fCost = 0, fText = "";
+        this.tempFoodGain = 0;
+
+        if (fVal === 0) {
+            fCost = 0; this.tempFoodGain = 0; fText = "Голодать";
+        } else if (fVal === 1) {
+            fCost = Math.round(prices.food * 0.5); this.tempFoodGain = 50; fText = "Перекус";
+        } else if (fVal === 2) {
+            fCost = prices.food; this.tempFoodGain = 100; fText = "Плотный обед";
+        }
+        document.getElementById('out-food').innerText = fCost;
+        document.getElementById('gain-food').innerText = `+${this.tempFoodGain}% (${fText})`;
+
+        // Логика БЕНЗИНА
+        let gVal = parseInt(document.getElementById('sl-gas').value);
+        let gCost = gVal * prices.gasPerLiter;
+        document.getElementById('out-gas').innerText = gCost;
+        document.getElementById('gain-gas').innerText = `+${gVal} л.`;
+
+        // Логика РЕМОНТА
+        let hpVal = parseInt(document.getElementById('sl-hp').value);
+        let hpCost = hpVal * prices.repairPerPercent;
+        document.getElementById('out-hp').innerText = hpCost;
+        document.getElementById('gain-hp').innerText = `+${hpVal}%`;
+
+        // ИТОГО
+        let sum = hCost + fCost + gCost + hpCost;
+        if(document.getElementById('chk-exc').checked) sum += prices.exc;
         document.getElementById('total-bill').innerText = sum;
     },
 
@@ -197,30 +245,32 @@ window.Game = {
         if (this.state.coins < bill) { this.toast("Недостаточно монет!"); return; }
 
         this.state.coins -= bill;
-        const p = Data.prices[this.state.currentCity.tier];
 
-        if(p.hotel > 0) this.state.wake += (document.getElementById('sl-hotel').value / p.hotel) * (100 - this.state.wake);
-        if(p.food > 0) this.state.food += (document.getElementById('sl-food').value / p.food) * (100 - this.state.food);
-        if(p.repair > 0) this.state.hp += (document.getElementById('sl-hp').value / p.repair) * (100 - this.state.hp);
-        
-        let maxGas = this.state.car.tank - this.state.gas;
-        if(maxGas > 0 && p.gasPerLiter > 0) this.state.gas += (document.getElementById('sl-gas').value / (p.gasPerLiter * maxGas)) * maxGas;
+        // Применяем ресурсы из временных переменных
+        this.state.wake = Math.min(100, this.state.wake + this.tempHotelGain);
+        this.state.food = Math.min(100, this.state.food + this.tempFoodGain);
+        this.state.gas += parseInt(document.getElementById('sl-gas').value);
+        this.state.hp += parseInt(document.getElementById('sl-hp').value);
 
+        // ПРОВЕРКА НА КОЛЛЕКЦИЮ ГОРОДА
         let hotelSpent = parseInt(document.getElementById('sl-hotel').value);
         let excBought = document.getElementById('chk-exc').checked;
         
+        // Город засчитывается, если взят любой ночлег (кроме машины) И экскурсия
         if (hotelSpent > 0 && excBought) {
             if(!this.state.collected.includes(this.state.currentCity.id)) {
                 this.state.collected.push(this.state.currentCity.id);
-                this.toast("Поздравляем! Карточка города добавлена в Альбом!");
+                this.toast("Карточка города добавлена в Альбом!");
                 this.updateMarkers();
             }
         }
 
         document.getElementById('city-actions').style.display = 'none';
-        document.getElementById('city-fact').innerText = "Готов к отправлению дальше.";
+        document.getElementById('city-fact').innerText = "Оплата прошла успешно! Вы готовы ехать дальше.";
         this.updateTopUI();
     },
+
+    // ====================================================
 
     updateTopUI: function() {
         document.getElementById('val-coins').innerText = Math.round(this.state.coins);
@@ -247,8 +297,8 @@ window.Game = {
             let b = document.createElement('button'); b.className = 'btn-action'; b.innerText = ans;
             b.onclick = () => {
                 document.getElementById('quest-modal').style.display = 'none';
-                if(i === q.right) { this.state.coins += 100; this.toast("Верно! +100 монет"); } 
-                else { this.toast("Неверно!"); }
+                if(i === q.right) { this.state.coins += 150; this.toast("Верно! +150 монет"); } 
+                else { this.toast("Неверно! Опыта нет."); }
                 this.updateTopUI();
                 this.openCityUI(city);
             };
@@ -285,22 +335,17 @@ window.Game = {
     }
 };
 
-// =====================================================================
-// КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ИНИЦИАЛИЗАЦИЯ ВК (БЕЗ НЕЕ БУДЕТ ЗАВИСАНИЕ!)
-// =====================================================================
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         if (window.vkBridge) {
-            await vkBridge.send('VKWebAppInit'); // <- ИМЕННО ЭТА СТРОЧКА УБИРАЕТ СЕРЫЙ ЭКРАН С ЗАГРУЗКОЙ
+            await vkBridge.send('VKWebAppInit'); 
             const user = await vkBridge.send('VKWebAppGetUserInfo');
             document.getElementById('player-name').innerText = user.first_name;
             document.getElementById('player-avatar').src = user.photo_200;
         }
     } catch (error) {
-        console.log("Запущено вне ВК, демо-режим.");
+        console.log("Демо-режим.");
         document.getElementById('player-name').innerText = "Игрок";
     }
-    
-    // Запускаем игру!
     Game.init();
 });
