@@ -1,33 +1,31 @@
 window.Data = {
     garages: {
         normal: [
-            { id: "sedan", name: "🚙 Городской Седан", tank: 50, cons: 8, hpLoss: 0.8, sleepBonus: 30 },
-            { id: "suv", name: "🚜 Внедорожник", tank: 80, cons: 12, hpLoss: 0.3, sleepBonus: 40 },
-            { id: "camper", name: "🚐 Автодом", tank: 70, cons: 15, hpLoss: 0.5, sleepBonus: 100 }
+            { id: "sedan", name: "🚙 Седан (Solaris)", tank: 50, cons: 8, hpLoss: 0.8, sleepBonus: 30, radius: 15 },
+            { id: "suv", name: "🚜 Внедорожник (УАЗ)", tank: 80, cons: 12, hpLoss: 0.3, sleepBonus: 40, radius: 40 },
+            { id: "camper", name: "🚐 Автодом", tank: 70, cons: 15, hpLoss: 0.5, sleepBonus: 100, radius: 20 }
         ],
         hard: [
-            { id: "lada", name: "🚗 ВАЗ 2107", tank: 40, cons: 10, hpLoss: 2.0, sleepBonus: 20 },
-            { id: "uaz", name: "🚐 УАЗ Буханка", tank: 75, cons: 16, hpLoss: 1.5, sleepBonus: 30 },
-            { id: "gazel", name: "🚚 Старая Газель", tank: 60, cons: 18, hpLoss: 1.8, sleepBonus: 30 }
+            { id: "lada", name: "🚗 ВАЗ 2107", tank: 40, cons: 10, hpLoss: 2.0, sleepBonus: 20, radius: 15 },
+            { id: "niva", name: "🚙 Нива", tank: 45, cons: 13, hpLoss: 1.5, sleepBonus: 30, radius: 40 }
         ],
         ultra: [
-            { id: "bike", name: "🚲 Велосипед", tank: 0, cons: 0, hpLoss: 0.1, sleepBonus: 10 }
+            { id: "bike", name: "🚲 Велосипед", tank: 0, cons: 0, hpLoss: 0.1, sleepBonus: 10, radius: 5 }
         ]
     },
 
-    // Цены (Min и Max для ползунков)
     prices: {
-        1: { hotelMin: 400, hotelMax: 800, foodMin: 250, foodMax: 500, repair: 10, gas: 55, exc: 300 },
-        2: { hotelMin: 250, hotelMax: 500, foodMin: 150, foodMax: 350, repair: 7,  gas: 53, exc: 150 },
-        3: { hotelMin: 150, hotelMax: 300, foodMin: 100, foodMax: 200, repair: 5,  gas: 50, exc: 50 } 
+        1: { hotelMin: 400, hotelMax: 800, foodMin: 250, foodMax: 500, repair: 10, gas: 7, exc: 200, quizReward: 150 },
+        2: { hotelMin: 250, hotelMax: 500, foodMin: 150, foodMax: 350, repair: 7,  gas: 6, exc: 100, quizReward: 100 },
+        3: { hotelMin: 100, hotelMax: 250, foodMin: 100, foodMax: 200, repair: 5,  gas: 6, exc: 50,  quizReward: 500 } // Скрытые щедрые
     },
 
     cities: [
-        // --- УРОВЕНЬ 1 ---
+        // УРОВЕНЬ 1 (Столицы)
         { id: "moscow", name: "Москва", tier: 1, coords: [55.7558, 37.6173], fact: "Столица России. Нулевой километр.", quests: [{q: "Год основания?", a: ["1147", "1242", "1380"], right: 0}] },
         { id: "belgorod", name: "Белгород", tier: 1, coords: [50.5997, 36.5982], fact: "Город первого салюта.", quests: [{q: "Что добывают рядом?", a: ["Мел", "Уголь", "Нефть"], right: 0}] },
         { id: "bryansk", name: "Брянск", tier: 1, coords: [53.2415, 34.3715], fact: "Город партизанской славы.", quests: [{q: "Мемориал?", a: ["Партизанская поляна", "Курган", "Стелла"], right: 0}] },
-        { id: "vladimir", name: "Владимир", tier: 1, coords: [56.1290, 40.4066], fact: "Древняя столица Руси.", quests: [{q: "Ворота?", a: ["Золотые", "Серебряные", "Медные"], right: 0}] },
+        { id: "vladimir", name: "Владимир", tier: 1, coords: [56.1290, 40.4066], fact: "Древняя столица Руси.", quests: [{q: "Главные ворота?", a: ["Золотые", "Серебряные", "Медные"], right: 0}] },
         { id: "voronezh", name: "Воронеж", tier: 1, coords: [51.6607, 39.2002], fact: "Колыбель русского флота.", quests: [{q: "Памятник?", a: ["Котенку с Лизюкова", "Биму", "Орлу"], right: 0}] },
         { id: "ivanovo", name: "Иваново", tier: 1, coords: [57.0003, 40.9739], fact: "Город невест.", quests: [{q: "Название края?", a: ["Ситцевый", "Льняной", "Шелковый"], right: 0}] },
         { id: "kaluga", name: "Калуга", tier: 1, coords: [54.5138, 36.2612], fact: "Колыбель космонавтики.", quests: [{q: "Ученый?", a: ["Циолковский", "Королев", "Гагарин"], right: 0}] },
@@ -43,7 +41,7 @@ window.Data = {
         { id: "tula", name: "Тула", tier: 1, coords: [54.1931, 37.6173], fact: "Оружейная столица.", quests: [{q: "Мастер?", a: ["Левша", "Кулибин", "Попов"], right: 0}] },
         { id: "yaroslavl", name: "Ярославль", tier: 1, coords: [57.6265, 39.8938], fact: "Столица Золотого кольца.", quests: [{q: "Символ?", a: ["Медведь", "Олень", "Лев"], right: 0}] },
 
-        // --- УРОВЕНЬ 2 ---
+        // УРОВЕНЬ 2 (Золотое кольцо)
         { id: "sergiev_posad", name: "Сергиев Посад", tier: 2, coords: [56.3000, 38.1333], fact: "Троице-Сергиева Лавра.", quests: [{q: "Основатель?", a: ["Сергий Радонежский", "Петр I", "Дмитрий Донской"], right: 0}] },
         { id: "pereslavl", name: "Переславль", tier: 2, coords: [56.7388, 38.8559], fact: "Родина потешного флота.", quests: [{q: "Озеро?", a: ["Плещеево", "Неро", "Селигер"], right: 0}] },
         { id: "rostov_velikiy", name: "Ростов Великий", tier: 2, coords: [57.1866, 39.4144], fact: "Ростовская финифть.", quests: [{q: "Фильм в Кремле?", a: ["Иван Васильевич", "Гардемарины", "Вий"], right: 0}] },
@@ -54,7 +52,7 @@ window.Data = {
         { id: "gorohovec", name: "Гороховец", tier: 2, coords: [56.2052, 42.6749], fact: "Купеческие палаты.", quests: [{q: "Река?", a: ["Клязьма", "Ока", "Волга"], right: 0}] },
         { id: "ples", name: "Плёс", tier: 2, coords: [57.4589, 41.5161], fact: "Русская Швейцария.", quests: [{q: "Художник?", a: ["Левитан", "Шишкин", "Репин"], right: 0}] },
 
-        // --- УРОВЕНЬ 3 ---
+        // УРОВЕНЬ 3 (Скрытые) - Невидимы изначально
         { id: "myshkin", name: "Мышкин", tier: 3, coords: [57.7889, 38.4552], fact: "Город мышей.", quests: [{q: "Музей?", a: ["Мыши", "Сыра", "Кота"], right: 0}] },
         { id: "borovsk", name: "Боровск", tier: 3, coords: [55.2058, 36.4866], fact: "Город фресок.", quests: [{q: "Кого сослали?", a: ["Аввакума", "Декабристов", "Большевиков"], right: 0}] },
         { id: "tarusa", name: "Таруса", tier: 3, coords: [54.7271, 37.1811], fact: "Город поэтов.", quests: [{q: "Поэтесса?", a: ["Цветаева", "Ахматова", "Блок"], right: 0}] },
@@ -67,7 +65,7 @@ window.Data = {
         { id: "rylsk", name: "Рыльск", tier: 3, coords: [51.5661, 34.6822], fact: "Купеческий город.", quests: [{q: "Родина кого?", a: ["Шелихова", "Никитина", "Хабарова"], right: 0}] },
         { id: "yelets", name: "Елец", tier: 3, coords: [52.6245, 38.5042], fact: "Кружева и модерн.", quests: [{q: "Промысел?", a: ["Кружевоплетение", "Резьба", "Роспись"], right: 0}] },
         { id: "zadonsk", name: "Задонск", tier: 3, coords: [52.3900, 38.9248], fact: "Русский Иерусалим.", quests: [{q: "Чем славится?", a: ["Монастырями", "Озерами", "Горами"], right: 0}] },
-        { id: "dmitrov", name: "Дмитров", tier: 3, coords: [56.3435, 39.5226], fact: "Земляные валы.", quests: [{q: "Памятник основателю?", a: ["Юрию Долгорукому", "Петру I", "Пушкину"], right: 0}] },
+        { id: "dmitrov", name: "Дмитров", tier: 3, coords: [56.3435, 39.5226], fact: "Земляные валы.", quests: [{q: "Основатель?", a: ["Юрий Долгорукий", "Петр I", "Пушкин"], right: 0}] },
         { id: "zaraysk", name: "Зарайск", tier: 3, coords: [54.7579, 38.8778], fact: "Малый кремль.", quests: [{q: "Река?", a: ["Осетр", "Щука", "Сом"], right: 0}] },
         { id: "kozelsk", name: "Козельск", tier: 3, coords: [54.0333, 35.7833], fact: "Город злой.", quests: [{q: "Монастырь?", a: ["Оптина пустынь", "Дивеево", "Валаам"], right: 0}] },
         { id: "chekalin", name: "Чекалин", tier: 3, coords: [54.0988, 36.2486], fact: "Самый маленький город.", quests: [{q: "Старое название?", a: ["Лихвин", "Темный", "Светлый"], right: 0}] }

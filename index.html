@@ -30,8 +30,8 @@
 
     <div class="header-right">
         <div id="player-profile" class="player-profile">
-            <span id="player-name">Загрузка...</span>
-            <img id="player-avatar" src="assets/ui/default_avatar.png" alt="">
+            <span id="player-name">Игрок</span>
+            <img id="player-avatar" src="https://via.placeholder.com/50" alt="">
         </div>
     </div>
 </header>
@@ -41,7 +41,7 @@
         <div class="mobile-drag-handle"></div>
 
         <div id="status-text" class="status-panel">
-            <i class="fa-solid fa-map-location-dot"></i> Выберите город на карте.
+            <i class="fa-solid fa-map-location-dot"></i> Загрузка карты...
         </div>
 
         <div id="city-info" style="display: none;">
@@ -50,17 +50,17 @@
             <p id="city-fact" class="city-fact"></p>
             
             <div id="city-actions" class="cost-box">
-                <h3 style="margin-top:0; color:#FF5722; font-size:16px;">Инфраструктура</h3>
+                <h3 class="box-title">Городская Инфраструктура</h3>
                 
                 <div class="service-block">
-                    <label class="cb-label"><input type="checkbox" id="chk-hotel"> 🛏️ Снять жилье (Ночлег)</label>
+                    <label class="cb-label"><input type="checkbox" id="chk-hotel"> 🛏️ Снять номер (Ночлег)</label>
+                    <p class="hint-text">Без оплаты вы спите в машине (+<span id="car-sleep-val">0</span>% бодрости бесплатно).</p>
                     <div id="wrap-hotel" class="slider-wrap">
                         <div class="slider-header">
                             <span>Цена: <span id="out-hotel" class="val-text">0</span> ₽</span>
                             <span id="gain-hotel" class="gain-text">+0%</span>
                         </div>
                         <input type="range" id="sl-hotel" class="styled-slider">
-                        <p class="hint-text">От хостела до премиум-отеля</p>
                     </div>
                 </div>
 
@@ -72,38 +72,34 @@
                             <span id="gain-food" class="gain-text">+0%</span>
                         </div>
                         <input type="range" id="sl-food" class="styled-slider">
-                        <p class="hint-text">От фастфуда до ресторана</p>
                     </div>
                 </div>
 
-                <div id="wrap-gas-hp" class="service-block" style="border-top:1px dashed #444; padding-top:15px;">
+                <div id="wrap-gas-hp" class="service-block border-top">
                     <div class="slider-header">
-                        <span>⛽ Бензин: <span id="out-gas" class="val-text">0</span> ₽</span>
+                        <span>⛽ АЗС: <span id="out-gas" class="val-text">0</span> ₽</span>
                         <span id="gain-gas" class="gain-text">+0 л.</span>
                     </div>
                     <input type="range" id="sl-gas" class="styled-slider">
 
                     <div class="slider-header" style="margin-top: 15px;">
-                        <span>🔧 Ремонт СТО: <span id="out-hp" class="val-text">0</span> ₽</span>
+                        <span>🔧 СТО: <span id="out-hp" class="val-text">0</span> ₽</span>
                         <span id="gain-hp" class="gain-text">+0%</span>
                     </div>
                     <input type="range" id="sl-hp" class="styled-slider">
                 </div>
 
-                <div class="service-block" style="border-top:1px dashed #444; padding-top:15px;">
-                    <label class="cb-label"><input type="checkbox" id="chk-exc"> 🎫 Купить экскурсию (<span id="price-exc">0</span> ₽)</label>
-                    <p style="font-size:11px; color:#FFC107; margin-top:5px;">*Ночлег и Экскурсия обязательны для Карточки Города!</p>
+                <div class="service-block border-top">
+                    <label class="cb-label"><input type="checkbox" id="chk-exc"> 🎫 Экскурсия (<span id="price-exc">0</span> ₽)</label>
+                    <p class="hint-text alert-text">*Ночлег и Экскурсия обязательны для получения Карточки Города!</p>
                 </div>
 
-                <div class="total-block">ИТОГО К ОПЛАТЕ: <span id="total-bill">0</span> ₽</div>
-                <button class="btn-action" id="btn-pay-city">ОПЛАТИТЬ УСЛУГИ</button>
+                <div class="total-block">ИТОГО: <span id="total-bill">0</span> ₽</div>
+                <button class="btn-action btn-pay" id="btn-pay-city">ОПЛАТИТЬ УСЛУГИ</button>
             </div>
             
-            <button class="btn-action" id="btn-leave-city" style="background: #444; margin-top: 15px;">ЕХАТЬ ДАЛЬШЕ</button>
+            <button class="btn-action btn-leave" id="btn-leave-city">ЕХАТЬ ДАЛЬШЕ</button>
             
-            <button class="btn-action btn-ad" id="btn-city-ad" style="margin-top: 10px; background: #2e7d32;">
-                <i class="fa-solid fa-play"></i> Реклама (+500 монет)
-            </button>
         </div>
     </div>
     
@@ -116,20 +112,20 @@
         <div id="modal-text" style="margin-bottom: 20px; font-size: 14px; line-height: 1.5;"></div>
         <div style="display: flex; gap: 10px; justify-content: center;">
             <button class="btn-action" id="btn-modal-ok">ДА</button>
-            <button class="btn-action" id="btn-modal-cancel" style="background: #444;">ОТМЕНА</button>
+            <button class="btn-action btn-leave" id="btn-modal-cancel">ОТМЕНА</button>
         </div>
     </div>
 </div>
 
 <div id="difficulty-modal" class="modal-overlay" style="display:flex;">
-    <div class="modal-box" style="max-width: 600px;">
+    <div class="modal-box" style="max-width: 700px;">
         <div class="modal-head">ВЫБЕРИТЕ СЛОЖНОСТЬ</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+        <div class="grid-3">
             <div class="diff-card" onclick="Game.selectDifficulty('normal')">
                 <h3>Обычная</h3><p>Современные авто. Редкие поломки, нормальный расход.</p>
             </div>
             <div class="diff-card" onclick="Game.selectDifficulty('hard')">
-                <h3 style="color:#FF9800;">Сложная</h3><p>Отечественная классика. Частые поломки, большой расход.</p>
+                <h3 style="color:#FF9800;">Сложная</h3><p>Классика (УАЗ, Нива). Частые поломки, большой расход.</p>
             </div>
             <div class="diff-card" onclick="Game.selectDifficulty('ultra')">
                 <h3 style="color:#F44336;">Хардкор</h3><p>Велосипед. Нет бензина, но еда улетает мгновенно.</p>
@@ -139,9 +135,9 @@
 </div>
 
 <div id="garage-modal" class="modal-overlay">
-    <div class="modal-box" style="max-width: 600px;">
-        <div class="modal-head">ВАШ ТРАНСПОРТ</div>
-        <div id="garage-list" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;"></div>
+    <div class="modal-box" style="max-width: 700px;">
+        <div class="modal-head">ГАРАЖ 2.0</div>
+        <div id="garage-list" class="grid-3"></div>
     </div>
 </div>
 
@@ -155,10 +151,10 @@
 
 <div id="album-modal" class="modal-overlay">
     <div class="modal-box" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
-        <div class="modal-head">МОЙ АЛЬБОМ</div>
-        <p style="font-size: 12px; color:#aaa; margin-bottom: 20px;">Оплатите ночлег и экскурсию в городе, чтобы получить карточку!</p>
-        <div id="album-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px;"></div>
-        <button class="btn-action" onclick="document.getElementById('album-modal').style.display='none'" style="margin-top:20px;">ЗАКРЫТЬ</button>
+        <div class="modal-head">АЛЬБОМ ДОСТИЖЕНИЙ</div>
+        <p style="font-size: 12px; color:#aaa; margin-bottom: 20px;">Зачет дается только за оплаченный Ночлег + Экскурсию.</p>
+        <div id="album-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;"></div>
+        <button class="btn-action btn-leave" onclick="document.getElementById('album-modal').style.display='none'" style="margin-top:20px;">ЗАКРЫТЬ</button>
     </div>
 </div>
 
