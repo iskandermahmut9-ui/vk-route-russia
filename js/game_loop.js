@@ -1,42 +1,57 @@
-window.SaveManager = { /* Код SaveManager из прошлого сообщения оставляем без изменений */ };
+window.SaveManager = {
+    save: function() {
+        const data = {
+            stats: GameLoop.stats, currentCar: GameLoop.currentCar,
+            currentCityId: Engine.currentCity ? Engine.currentCity.id : null,
+            startCitySet: Engine.startCitySet, passedCities: Array.from(Engine.passedCities)
+        };
+        localStorage.setItem('route_russia_save_v5', JSON.stringify(data));
+    },
+    load: function() {
+        const saved = localStorage.getItem('route_russia_save_v5');
+        return saved ? JSON.parse(saved) : null;
+    },
+    clear: function() { localStorage.removeItem('route_russia_save_v5'); }
+};
 
 window.GameLoop = {
-    stats: { coins: 5000, gas: 50, food: 100, wake: 100, hp: 100, xp: 0, kmTraveled: 0, hoursPassed: 0 },
+    stats: { coins: 5000, gas: 0, food: 100, wake: 100, hp: 100, xp: 0, kmTraveled: 0, hoursPassed: 0 },
     currentCar: null,
 
-    init: function() {
+    // Вызывается из app.js ПОСЛЕ выбора машины в гараже
+    startNewGame: function(selectedCar) {
+        this.currentCar = selectedCar;
         this.stats = { ...DataLoader.initialResources, kmTraveled: 0, hoursPassed: 0 };
-        // Для теста берем Седан. Позже сделаем выбор через модальное окно.
-        this.currentCar = DataLoader.cars.sedan; 
-        this.stats.gas = this.currentCar.tankSize; // Заливаем полный бак
+        this.stats.gas = selectedCar.tankSize; // Полный бак на старте!
         this.updateUI();
     },
 
-    // ВНИМАНИЕ: Честный расчет ресурсов от пройденных километров
+    loadSave: function(savedStats, savedCar) {
+        this.stats = savedStats;
+        this.currentCar = savedCar;
+        this.updateUI();
+    },
+
     tick: function(kmStep) {
         if (!this.currentCar) return;
 
         this.stats.kmTraveled += kmStep;
-        
-        // Время: скорость 80 км/ч (1 км = 0.0125 часа)
-        const timePassed = kmStep / 80;
+        const timePassed = kmStep / 80; // 80 км/ч
         this.stats.hoursPassed += timePassed;
 
-        // БЕНЗИН: Расход = (литры на 100 км / 100) * пройденные километры
+        // Расход бензина (Формула: л/100км * пройденные км)
         const fuelBurned = (this.currentCar.consumption / 100) * kmStep;
         this.stats.gas -= fuelBurned;
 
-        // БОДРОСТЬ (Сон): Падает до 0 за 700 км пробега
-        const wakeBurned = (kmStep / 700) * 100;
-        this.stats.wake -= wakeBurned;
+        // Бодрость (700 км до нуля)
+        this.stats.wake -= (kmStep / 700) * 100;
 
-        // ЕДА: Списываем условно 12.5 монет за каждый час в пути (300 монет в сутки)
+        // Еда (условно 12.5 монет за час = 300 в сутки)
         this.stats.coins -= (timePassed * 12.5);
 
-        // ИЗНОС: 1% на 100 км для седана
+        // Износ машины
         this.stats.hp -= (kmStep / 100);
 
-        // Защита от ухода в минус
         this.stats.gas = Math.max(0, this.stats.gas);
         this.stats.wake = Math.max(0, this.stats.wake);
         this.stats.hp = Math.max(0, this.stats.hp);
@@ -44,22 +59,17 @@ window.GameLoop = {
 
         this.updateUI();
 
-        // Проверка: Бак пуст!
         if (this.stats.gas === 0) {
             Engine.pauseRoute();
-            UI.showModal("Бак пуст!", "Бензин закончился на трассе! Вызывайте эвакуатор.", false, () => {});
+            UI.showModal("Бак пуст!", "Бензин закончился на трассе! Начать заново?", true, 
+                () => { SaveManager.clear(); window.location.reload(); }, () => {}
+            );
         }
     },
 
     updateUI: function() {
-        // Меняем в UI отображение Бензина на Литры (вместо процентов)
-        const gasText = `${Math.round(this.stats.gas)} / ${this.currentCar ? this.currentCar.tankSize : 50} л.`;
-        
-        if(document.getElementById('val-coins')) document.getElementById('val-coins').innerText = Math.round(this.stats.coins);
-        if(document.getElementById('val-gas')) document.getElementById('val-gas').innerText = gasText;
-        if(document.getElementById('val-wake')) document.getElementById('val-wake').innerText = Math.round(this.stats.wake);
-        if(document.getElementById('val-hp')) document.getElementById('val-hp').innerText = Math.round(this.stats.hp);
-        if(document.getElementById('val-xp')) document.getElementById('val-xp').innerText = Math.round(this.stats.xp);
+        const tank = this.currentCar ? this.currentCar.tankSize : 0;
+        UI.updateResources(this.stats.coins, this.stats.gas, tank, this.stats.food, this.stats.wake, this.stats.hp, this.stats.xp);
         
         if (document.getElementById('stat-km')) {
             document.getElementById('stat-km').innerText = Math.round(this.stats.kmTraveled);

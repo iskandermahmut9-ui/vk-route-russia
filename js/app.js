@@ -9,11 +9,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         }, () => {});
     });
 
-    if (!localStorage.getItem('route_russia_onboarding_v4')) {
+    if (!localStorage.getItem('route_russia_onboarding_v5')) {
         document.getElementById('onboarding-modal').style.display = 'flex';
         document.getElementById('btn-close-onboarding').onclick = () => {
             document.getElementById('onboarding-modal').style.display = 'none';
-            localStorage.setItem('route_russia_onboarding_v4', 'true');
+            localStorage.setItem('route_russia_onboarding_v5', 'true');
             startGame();
         };
     } else { startGame(); }
@@ -25,12 +25,11 @@ async function startGame() {
     await DataLoader.init();
     Engine.init();
 
-    // ПЫТАЕМСЯ ЗАГРУЗИТЬ СОХРАНЕНИЕ
     const saved = SaveManager.load();
     
-    if (saved && saved.startCitySet) {
-        // Восстанавливаем данные
-        GameLoop.stats = saved.stats;
+    if (saved && saved.startCitySet && saved.currentCar) {
+        // ЗАГРУЗКА ИГРЫ
+        GameLoop.loadSave(saved.stats, saved.currentCar);
         Engine.startCitySet = saved.startCitySet;
         Engine.passedCities = new Set(saved.passedCities);
         
@@ -43,11 +42,12 @@ async function startGame() {
             UI.updateStatus(`Вы в городе ${Engine.currentCity.name}. Выберите цель поездки!`);
             UI.openCityPanel(Engine.currentCity);
         }
-        GameLoop.updateUI();
-        UI.showToast("Прогресс загружен! Поехали дальше!");
+        UI.showToast("Прогресс загружен!");
     } else {
-        // Если сохранений нет - начинаем новую игру
-        GameLoop.init(); 
-        UI.showToast("Нажмите на город для старта экспедиции.");
+        // НОВАЯ ИГРА -> ОТКРЫВАЕМ ГАРАЖ
+        UI.renderGarage(DataLoader.cars, (selectedCar) => {
+            GameLoop.startNewGame(selectedCar);
+            UI.showToast("Выберите город для старта на карте!");
+        });
     }
 }
