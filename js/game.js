@@ -1,31 +1,18 @@
 window.Game = {
-    map: null, markers: {}, routeLines: [],
+    map: null, markers: {}, routeLines: [], carMarker: null,
     state: {
-        coins: 1000, gas: 0, food: 100, wake: 100, hp: 100,
+        coins: 5000, gas: 0, food: 100, wake: 100, hp: 100,
         car: null, diff: null, mode: null,
-        currentCity: null, history: [], collected: []
+        currentCity: null, history: [], collected: [], isMoving: false
     },
 
     init: function() {
         this.map = L.map('map', { zoomControl: false }).setView([55.75, 38.0], 6);
         L.control.zoom({position: 'topright'}).addTo(this.map);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(this.map);
 
-        this.checkDailyBonus();
         this.renderMap();
         this.bindEvents();
-    },
-
-    checkDailyBonus: function() {
-        let last = localStorage.getItem('route_last_login');
-        let today = new Date().toDateString();
-        if (last !== today) {
-            this.state.coins += 1000;
-            this.state.coins += 200; // Условный бонус ВК
-            localStorage.setItem('route_last_login', today);
-            this.toast("Ежедневный бонус: +1200 монет (с учетом ВК)!");
-        }
-        this.updateTopUI();
     },
 
     selectDifficulty: function(diff) {
@@ -52,7 +39,7 @@ window.Game = {
         document.getElementById('mode-modal').style.display = 'none';
         document.getElementById('resource-panel').style.display = 'flex';
         this.updateTopUI();
-        this.toast("Кликните на город для старта!");
+        this.toast("Кликните на город на карте для старта!");
     },
 
     renderMap: function() {
@@ -62,6 +49,7 @@ window.Game = {
             this.markers[c.id] = m;
 
             m.on('click', async () => {
+                if (this.state.isMoving) return;
                 if (!this.state.currentCity) this.setStartCity(c);
                 else {
                     if (this.state.currentCity.id === c.id) return;
@@ -76,10 +64,14 @@ window.Game = {
         this.state.history.push(city.id);
         this.updateMarkers();
         
+        let carIcon = L.divIcon({className: 'city-marker current', iconSize: [24, 24], iconAnchor: [12,12]});
+        this.carMarker = L.marker(city.coords, {icon: carIcon, zIndexOffset: 1000}).addTo(this.map);
+
         document.getElementById('status-text').style.display = 'none';
         document.getElementById('city-info').style.display = 'block';
         document.getElementById('city-name').innerText = city.name;
-        document.getElementById('city-fact').innerText = "Счастливого пути! Ваши ресурсы полны.";
+        document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
+        document.getElementById('city-fact').innerText = "Стартовая точка. Выберите следующий город на карте.";
         document.getElementById('city-actions').style.display = 'none'; 
         
         if(window.innerWidth <= 768) document.getElementById('game-panel').classList.add('open');
@@ -91,24 +83,27 @@ window.Game = {
         
         try {
             const res = await fetch(url); const data = await res.json();
-            const dist = data.routes[0].distance / 1000;
+            const distKm = data.routes[0].distance / 1000;
             const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
 
-            this.showConfirm(`Едем в ${targetCity.name}?`, `Расстояние: ${Math.round(dist)} км.`, () => {
-                this.executeTravel(targetCity, dist, routeCoords);
+            this.showConfirm(`Едем в ${targetCity.name}?`, `Расстояние: ${Math.round(distKm)} км.`, () => {
+                this.executeTravel(targetCity, distKm, routeCoords);
             });
-        } catch(e) { this.toast("Ошибка прокладки маршрута"); }
+        } catch(e) { this.toast("Ошибка навигатора"); }
     },
 
     executeTravel: function(city, distKm, coords) {
+        document.getElementById('city-info').style.display = 'none';
+        document.getElementById('status-text').style.display = 'block';
+        document.getElementById('status-text').innerHTML = `<i class="fa-solid fa-car-side"></i> Едем в ${city.name}...`;
+        if(window.innerWidth <= 768) document.getElementById('game-panel').classList.remove('open');
+
         let line = L.polyline(coords, {color: '#FF5722', weight: 4}).addTo(this.map);
         this.routeLines.push(line);
 
-        if (this.state.car.id !== "bike") {
-            this.state.gas -= (this.state.car.cons / 100) * distKm;
-        } else {
-            this.state.food -= (distKm * 0.5);
-        }
+        if (this.state.car.id !== "bike") this.state.gas -= (this.state.car.cons / 100) * distKm;
+        else this.state.food -= (distKm * 0.5);
+        
         this.state.wake -= (distKm / 700) * 100;
         this.state.food -= (distKm * 0.05);
         this.state.hp -= (distKm / 100) * this.state.car.hpLoss;
@@ -119,15 +114,37 @@ window.Game = {
         if(this.state.hp < 0) this.state.hp = 0;
 
         this.updateTopUI();
+        this.state.isMoving = true;
 
+        // АНИМАЦИЯ МАШИНКИ ПО ТРАССЕ
+        let step = 0;
+        let speed = Math.max(1, Math.floor(coords.length / 40)); 
+        let moveInterval = setInterval(() => {
+            step += speed;
+            if (step >= coords.length - 1) {
+                step = coords.length - 1;
+                clearInterval(moveInterval);
+                this.carMarker.setLatLng(coords[step]);
+                this.finishTravel(city, line);
+            } else {
+                this.carMarker.setLatLng(coords[step]);
+                if(window.innerWidth > 768) this.map.panTo(coords[step], {animate: true, duration: 0.1});
+            }
+        }, 50);
+    },
+
+    finishTravel: function(city, line) {
+        this.state.isMoving = false;
         this.state.currentCity = city;
         this.state.history.push(city.id);
-        this.updateMarkers();
-        this.map.panTo(city.coords);
         
-        this.routeLines.forEach(l => l.setStyle({color: '#888', weight: 2}));
-        line.setStyle({color: '#FF5722', weight: 4});
+        // Шлейф старых маршрутов
+        this.routeLines.forEach(l => l.setStyle({color: '#666', weight: 3, dashArray: '5, 10'}));
+        line.setStyle({color: '#FF5722', weight: 4, dashArray: null});
 
+        this.updateMarkers();
+        
+        // ВЫЗОВ КВЕСТА ТОЛЬКО ПО ПРИЕЗДУ
         if(city.quests && city.quests.length > 0) {
             this.showQuest(city);
         } else {
@@ -142,13 +159,9 @@ window.Game = {
             if(!el) return;
             el.className = 'leaflet-marker-icon leaflet-zoom-animated leaflet-interactive city-marker';
             if (this.state.collected.includes(id)) el.classList.add('collected');
-            if (this.state.currentCity && this.state.currentCity.id === id) el.classList.add('current');
         });
     },
 
-    // ====================================================
-    // НОВАЯ ЛОГИКА ТРАТ (Дискретные шаги, а не проценты)
-    // ====================================================
     openCityUI: function(city) {
         document.getElementById('status-text').style.display = 'none';
         document.getElementById('city-actions').style.display = 'block';
@@ -159,85 +172,116 @@ window.Game = {
         
         const p = Data.prices[city.tier];
         
-        // 1. НОЧЛЕГ (3 шага: 0=В машине, 1=Мотель, 2=Отель)
+        // НОЧЛЕГ
+        let chkHotel = document.getElementById('chk-hotel');
+        let wrapHotel = document.getElementById('wrap-hotel');
         let slHotel = document.getElementById('sl-hotel');
-        slHotel.min = 0; slHotel.max = 2; slHotel.step = 1; slHotel.value = 0;
+        document.getElementById('car-sleep-val').innerText = this.state.car.sleepBonus;
         
-        // 2. ЕДА (3 шага: 0=Голодать, 1=Перекус, 2=Обед)
-        let slFood = document.getElementById('sl-food');
-        slFood.min = 0; slFood.max = 2; slFood.step = 1; slFood.value = 0;
-        
-        // 3. БЕНЗИН (поштучно за 1 литр)
-        const maxGas = Math.floor(this.state.car.tank - this.state.gas);
-        let slGas = document.getElementById('sl-gas');
-        slGas.min = 0; slGas.max = maxGas; slGas.step = 1; slGas.value = 0;
-        
-        // 4. РЕМОНТ (поштучно за 1%)
-        const maxHp = Math.floor(100 - this.state.hp);
-        let slHp = document.getElementById('sl-hp');
-        slHp.min = 0; slHp.max = maxHp; slHp.step = 1; slHp.value = 0;
+        if (p.hotel > 0) {
+            chkHotel.disabled = false; chkHotel.checked = false; wrapHotel.style.display = 'none';
+            slHotel.min = p.hotel * 0.5; slHotel.max = p.hotel; slHotel.step = 50; slHotel.value = slHotel.min;
+        } else {
+            chkHotel.disabled = true; chkHotel.checked = false; wrapHotel.style.display = 'none';
+        }
+        chkHotel.onchange = () => { wrapHotel.style.display = chkHotel.checked ? 'block' : 'none'; this.calcCityBill(p); };
+        slHotel.oninput = () => this.calcCityBill(p);
 
+        // ЕДА
+        let chkFood = document.getElementById('chk-food');
+        let wrapFood = document.getElementById('wrap-food');
+        let slFood = document.getElementById('sl-food');
+
+        if (p.food > 0) {
+            chkFood.disabled = false; chkFood.checked = false; wrapFood.style.display = 'none';
+            slFood.min = p.food * 0.5; slFood.max = p.food; slFood.step = 50; slFood.value = slFood.min;
+        } else {
+            chkFood.disabled = true; chkFood.checked = false; wrapFood.style.display = 'none';
+        }
+        chkFood.onchange = () => { wrapFood.style.display = chkFood.checked ? 'block' : 'none'; this.calcCityBill(p); };
+        slFood.oninput = () => this.calcCityBill(p);
+
+        // БЕНЗИН И РЕМОНТ
+        let wrapGas = document.getElementById('wrap-gas-hp');
+        if (this.state.car.id === "bike" || (p.gasPerLiter === 0 && p.repairPerPercent === 0)) {
+            wrapGas.style.display = 'none';
+        } else {
+            wrapGas.style.display = 'block';
+            let maxGas = Math.max(0, Math.floor(this.state.car.tank - this.state.gas));
+            let slGas = document.getElementById('sl-gas');
+            slGas.min = 0; slGas.max = maxGas; slGas.step = 1; slGas.value = 0;
+            
+            let maxHp = Math.max(0, Math.floor(100 - this.state.hp));
+            let slHp = document.getElementById('sl-hp');
+            slHp.min = 0; slHp.max = maxHp; slHp.step = 1; slHp.value = 0;
+
+            slGas.oninput = () => this.calcCityBill(p);
+            slHp.oninput = () => this.calcCityBill(p);
+        }
+
+        // ЭКСКУРСИЯ
         document.getElementById('price-exc').innerText = p.exc;
         document.getElementById('chk-exc').checked = false;
+        document.getElementById('chk-exc').onchange = () => this.calcCityBill(p);
 
-        // Привязываем обработчики
-        slHotel.oninput = () => this.updateSlidersLogic(p);
-        slFood.oninput = () => this.updateSlidersLogic(p);
-        slGas.oninput = () => this.updateSlidersLogic(p);
-        slHp.oninput = () => this.updateSlidersLogic(p);
-
-        this.updateSlidersLogic(p); // Вызываем для первичной отрисовки 0
-        
+        this.calcCityBill(p);
         if(window.innerWidth <= 768) document.getElementById('game-panel').classList.add('open');
     },
 
-    updateSlidersLogic: function(prices) {
-        // Логика НОЧЛЕГА
-        let hVal = parseInt(document.getElementById('sl-hotel').value);
-        let hCost = 0, hText = "";
-        this.tempHotelGain = 0; // Сохраняем во временную переменную для payCityBill
+    calcCityBill: function(p) {
+        let total = 0;
 
-        if (hVal === 0) {
-            hCost = 0; this.tempHotelGain = this.state.car.sleepBonus; hText = "В машине";
-        } else if (hVal === 1) {
-            hCost = Math.round(prices.hotel * 0.5); this.tempHotelGain = 60; hText = "Мотель";
-        } else if (hVal === 2) {
-            hCost = prices.hotel; this.tempHotelGain = 100; hText = "Отель";
+        // Расчет Отеля
+        this.tempHotelGain = 0;
+        if (document.getElementById('chk-hotel').checked && p.hotel > 0) {
+            let cost = parseInt(document.getElementById('sl-hotel').value);
+            total += cost;
+            document.getElementById('out-hotel').innerText = cost;
+            // Пропорция от 50% до 100% бодрости
+            let minC = p.hotel * 0.5;
+            let percent = 50 + ((cost - minC) / (p.hotel - minC)) * 50;
+            this.tempHotelGain = Math.round(percent);
+            document.getElementById('gain-hotel').innerText = `+${this.tempHotelGain}% (Отель)`;
+        } else {
+            document.getElementById('out-hotel').innerText = 0;
+            // Если не сняли жилье, спим в машине бесплатно
+            this.tempHotelGain = this.state.car.sleepBonus;
+            document.getElementById('gain-hotel').innerText = `+${this.tempHotelGain}% (В машине)`;
         }
-        document.getElementById('out-hotel').innerText = hCost;
-        document.getElementById('gain-hotel').innerText = `+${this.tempHotelGain}% (${hText})`;
 
-        // Логика ЕДЫ
-        let fVal = parseInt(document.getElementById('sl-food').value);
-        let fCost = 0, fText = "";
+        // Расчет Еды
         this.tempFoodGain = 0;
-
-        if (fVal === 0) {
-            fCost = 0; this.tempFoodGain = 0; fText = "Голодать";
-        } else if (fVal === 1) {
-            fCost = Math.round(prices.food * 0.5); this.tempFoodGain = 50; fText = "Перекус";
-        } else if (fVal === 2) {
-            fCost = prices.food; this.tempFoodGain = 100; fText = "Плотный обед";
+        if (document.getElementById('chk-food').checked && p.food > 0) {
+            let cost = parseInt(document.getElementById('sl-food').value);
+            total += cost;
+            document.getElementById('out-food').innerText = cost;
+            let minC = p.food * 0.5;
+            let percent = 50 + ((cost - minC) / (p.food - minC)) * 50;
+            this.tempFoodGain = Math.round(percent);
+            document.getElementById('gain-food').innerText = `+${this.tempFoodGain}%`;
+        } else {
+            document.getElementById('out-food').innerText = 0;
+            document.getElementById('gain-food').innerText = `+0% (Голод)`;
         }
-        document.getElementById('out-food').innerText = fCost;
-        document.getElementById('gain-food').innerText = `+${this.tempFoodGain}% (${fText})`;
 
-        // Логика БЕНЗИНА
-        let gVal = parseInt(document.getElementById('sl-gas').value);
-        let gCost = gVal * prices.gasPerLiter;
-        document.getElementById('out-gas').innerText = gCost;
-        document.getElementById('gain-gas').innerText = `+${gVal} л.`;
+        // Расчет Бензина и Ремонта
+        if (this.state.car.id !== "bike" && p.gasPerLiter > 0) {
+            let gVal = parseInt(document.getElementById('sl-gas').value);
+            let gCost = gVal * p.gasPerLiter;
+            total += gCost;
+            document.getElementById('out-gas').innerText = gCost;
+            document.getElementById('gain-gas').innerText = `+${gVal} л.`;
 
-        // Логика РЕМОНТА
-        let hpVal = parseInt(document.getElementById('sl-hp').value);
-        let hpCost = hpVal * prices.repairPerPercent;
-        document.getElementById('out-hp').innerText = hpCost;
-        document.getElementById('gain-hp').innerText = `+${hpVal}%`;
+            let hpVal = parseInt(document.getElementById('sl-hp').value);
+            let hpCost = hpVal * p.repairPerPercent;
+            total += hpCost;
+            document.getElementById('out-hp').innerText = hpCost;
+            document.getElementById('gain-hp').innerText = `+${hpVal}%`;
+        }
 
-        // ИТОГО
-        let sum = hCost + fCost + gCost + hpCost;
-        if(document.getElementById('chk-exc').checked) sum += prices.exc;
-        document.getElementById('total-bill').innerText = sum;
+        if(document.getElementById('chk-exc').checked) total += p.exc;
+
+        document.getElementById('total-bill').innerText = total;
     },
 
     payCityBill: function() {
@@ -246,31 +290,30 @@ window.Game = {
 
         this.state.coins -= bill;
 
-        // Применяем ресурсы из временных переменных
         this.state.wake = Math.min(100, this.state.wake + this.tempHotelGain);
         this.state.food = Math.min(100, this.state.food + this.tempFoodGain);
-        this.state.gas += parseInt(document.getElementById('sl-gas').value);
-        this.state.hp += parseInt(document.getElementById('sl-hp').value);
-
-        // ПРОВЕРКА НА КОЛЛЕКЦИЮ ГОРОДА
-        let hotelSpent = parseInt(document.getElementById('sl-hotel').value);
-        let excBought = document.getElementById('chk-exc').checked;
         
-        // Город засчитывается, если взят любой ночлег (кроме машины) И экскурсия
-        if (hotelSpent > 0 && excBought) {
+        if (this.state.car.id !== "bike") {
+            this.state.gas += parseInt(document.getElementById('sl-gas').value);
+            this.state.hp += parseInt(document.getElementById('sl-hp').value);
+        }
+
+        // КОЛЛЕКЦИЯ ГОРОДА (Условие: Куплен Отель И Экскурсия)
+        let hotelChecked = document.getElementById('chk-hotel').checked;
+        let excChecked = document.getElementById('chk-exc').checked;
+        
+        if (hotelChecked && excChecked) {
             if(!this.state.collected.includes(this.state.currentCity.id)) {
                 this.state.collected.push(this.state.currentCity.id);
-                this.toast("Карточка города добавлена в Альбом!");
+                this.toast("Город полностью изучен! Добавлен в Альбом.");
                 this.updateMarkers();
             }
         }
 
         document.getElementById('city-actions').style.display = 'none';
-        document.getElementById('city-fact').innerText = "Оплата прошла успешно! Вы готовы ехать дальше.";
+        document.getElementById('city-fact').innerText = "Город пройден! Выберите следующую точку на карте.";
         this.updateTopUI();
     },
-
-    // ====================================================
 
     updateTopUI: function() {
         document.getElementById('val-coins').innerText = Math.round(this.state.coins);
@@ -298,7 +341,7 @@ window.Game = {
             b.onclick = () => {
                 document.getElementById('quest-modal').style.display = 'none';
                 if(i === q.right) { this.state.coins += 150; this.toast("Верно! +150 монет"); } 
-                else { this.toast("Неверно! Опыта нет."); }
+                else { this.toast("Неверно!"); }
                 this.updateTopUI();
                 this.openCityUI(city);
             };
@@ -343,9 +386,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('player-name').innerText = user.first_name;
             document.getElementById('player-avatar').src = user.photo_200;
         }
-    } catch (error) {
-        console.log("Демо-режим.");
-        document.getElementById('player-name').innerText = "Игрок";
-    }
+    } catch (error) { document.getElementById('player-name').innerText = "Игрок"; }
     Game.init();
 });

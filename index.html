@@ -41,7 +41,7 @@
         <div class="mobile-drag-handle"></div>
 
         <div id="status-text" class="status-panel">
-            <i class="fa-solid fa-map-location-dot"></i> Выберите город на карте.
+            <i class="fa-solid fa-map-location-dot"></i> Загрузка карты...
         </div>
 
         <div id="city-info" style="display: none;">
@@ -50,41 +50,51 @@
             <p id="city-fact" class="city-fact"></p>
             
             <div id="city-actions" class="cost-box">
-                <h3 style="margin-top:0; color:#FF5722;">Восполнение ресурсов</h3>
+                <h3 style="margin-top:0; color:#FF5722; font-size:16px;">Восполнение ресурсов</h3>
                 
-                <div class="slider-group">
-                    <div class="slider-header"><span>🛏️ Ночлег (<span id="out-hotel">0</span> ₽)</span> <span id="gain-hotel" class="gain-text">+0%</span></div>
-                    <input type="range" id="sl-hotel" min="0" max="100" value="0">
+                <div class="checkbox-group" style="border:none; padding:0; margin-bottom:5px;">
+                    <label><input type="checkbox" id="chk-hotel"> 🛏️ Снять жилье (Ночлег)</label>
+                    <p id="hotel-hint" style="font-size:11px; color:#aaa; margin:5px 0 10px 25px;">Без жилья вы спите в машине (+<span id="car-sleep-val">0</span>% бодрости бесплатно).</p>
+                </div>
+                <div id="wrap-hotel" style="display:none; margin-bottom:20px; padding-left:25px;">
+                    <div class="slider-header"><span>Цена: <span id="out-hotel">0</span> ₽</span> <span id="gain-hotel" class="gain-text">+0%</span></div>
+                    <input type="range" id="sl-hotel" value="0">
+                    <p style="font-size:10px; color:#888; margin:5px 0 0 0;">(От дешевого хостела до отеля)</p>
                 </div>
 
-                <div class="slider-group">
-                    <div class="slider-header"><span>🍔 Еда (<span id="out-food">0</span> ₽)</span> <span id="gain-food" class="gain-text">+0%</span></div>
-                    <input type="range" id="sl-food" min="0" max="100" value="0">
+                <div class="checkbox-group" style="border:none; padding:0; margin-bottom:5px;">
+                    <label><input type="checkbox" id="chk-food"> 🍔 Поесть в заведении</label>
+                </div>
+                <div id="wrap-food" style="display:none; margin-bottom:20px; padding-left:25px;">
+                    <div class="slider-header"><span>Цена: <span id="out-food">0</span> ₽</span> <span id="gain-food" class="gain-text">+0%</span></div>
+                    <input type="range" id="sl-food" value="0">
                 </div>
 
-                <div class="slider-group">
-                    <div class="slider-header"><span>⛽ Бензин (<span id="out-gas">0</span> ₽)</span> <span id="gain-gas" class="gain-text">+0 л.</span></div>
-                    <input type="range" id="sl-gas" min="0" max="100" value="0">
+                <div id="wrap-gas-hp" style="margin-top:20px; border-top:1px dashed #444; padding-top:15px;">
+                    <div class="slider-group">
+                        <div class="slider-header"><span>⛽ Бензин (<span id="out-gas">0</span> ₽)</span> <span id="gain-gas" class="gain-text">+0 л.</span></div>
+                        <input type="range" id="sl-gas" min="0" max="100" value="0">
+                    </div>
+
+                    <div class="slider-group" style="margin-top: 15px;">
+                        <div class="slider-header"><span>🔧 Ремонт (<span id="out-hp">0</span> ₽)</span> <span id="gain-hp" class="gain-text">+0%</span></div>
+                        <input type="range" id="sl-hp" min="0" max="100" value="0">
+                    </div>
                 </div>
 
-                <div class="slider-group">
-                    <div class="slider-header"><span>🔧 Ремонт (<span id="out-hp">0</span> ₽)</span> <span id="gain-hp" class="gain-text">+0%</span></div>
-                    <input type="range" id="sl-hp" min="0" max="100" value="0">
-                </div>
-
-                <div class="checkbox-group">
+                <div class="checkbox-group" style="border-top:1px dashed #444;">
                     <label><input type="checkbox" id="chk-exc"> 🎫 Взять экскурсию (<span id="price-exc">0</span> ₽)</label>
-                    <p style="font-size:10px; color:#aaa; margin:5px 0 0 0;">*Необходимо для получения Карточки Города</p>
+                    <p style="font-size:10px; color:#FFC107; margin:5px 0 0 25px;">*Оплата жилья и экскурсии обязательна для получения Карточки Города!</p>
                 </div>
 
-                <div style="margin-top: 15px; text-align: right; font-size: 16px; font-weight: bold;">
+                <div style="margin-top: 20px; text-align: right; font-size: 18px; font-weight: bold;">
                     Итого: <span id="total-bill" style="color:#FF5722;">0</span> ₽
                 </div>
                 
                 <button class="btn-action" id="btn-pay-city" style="margin-top: 15px;">ОПЛАТИТЬ</button>
             </div>
             
-            <button class="btn-action btn-ad" id="btn-city-ad" style="margin-top: 10px;">
+            <button class="btn-action btn-ad" id="btn-city-ad" style="margin-top: 10px; background: #2e7d32;">
                 <i class="fa-solid fa-play"></i> Реклама (+500 монет)
             </button>
         </div>
@@ -149,8 +159,8 @@
 <div id="album-modal" class="modal-overlay">
     <div class="modal-box" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
         <div class="modal-head">МОЙ АЛЬБОМ ДОСТИЖЕНИЙ</div>
-        <p style="font-size: 12px; color:#aaa;">Соберите ночлег и экскурсию в городе, чтобы получить карточку!</p>
-        <div id="album-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 20px;"></div>
+        <p style="font-size: 12px; color:#aaa; margin-bottom: 20px;">Оплатите ночлег и экскурсию в городе, чтобы получить карточку!</p>
+        <div id="album-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px;"></div>
         <button class="btn-action" onclick="document.getElementById('album-modal').style.display='none'" style="margin-top:20px;">ЗАКРЫТЬ</button>
     </div>
 </div>
