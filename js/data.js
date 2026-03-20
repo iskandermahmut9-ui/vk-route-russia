@@ -1,27 +1,26 @@
 window.Data = {
     garages: {
         normal: [
-            { id: "sedan", name: "🚙 Седан (Solaris)", tank: 50, cons: 8, hpLoss: 0.8, sleepBonus: 30, radius: 15 },
-            { id: "suv", name: "🚜 Внедорожник", tank: 80, cons: 12, hpLoss: 0.3, sleepBonus: 40, radius: 40 },
+            { id: "sedan", name: "🚙 Седан (Solaris)", tank: 50, cons: 8, hpLoss: 0.8, sleepBonus: 0, radius: 15 },
+            { id: "suv", name: "🚜 Внедорожник (УАЗ)", tank: 80, cons: 12, hpLoss: 0.3, sleepBonus: 0, radius: 40 },
             { id: "camper", name: "🚐 Автодом", tank: 70, cons: 15, hpLoss: 0.5, sleepBonus: 100, radius: 20 }
         ],
         hard: [
-            { id: "lada", name: "🚗 ВАЗ 2107", tank: 40, cons: 10, hpLoss: 2.0, sleepBonus: 20, radius: 15 },
-            { id: "niva", name: "🚙 Нива", tank: 45, cons: 13, hpLoss: 1.5, sleepBonus: 30, radius: 40 }
+            { id: "lada", name: "🚗 ВАЗ 2107", tank: 40, cons: 10, hpLoss: 2.0, sleepBonus: 0, radius: 15 },
+            { id: "niva", name: "🚙 Нива", tank: 45, cons: 13, hpLoss: 1.5, sleepBonus: 0, radius: 40 }
         ],
         ultra: [
-            { id: "bike", name: "🚲 Велосипед", tank: 0, cons: 0, hpLoss: 0.1, sleepBonus: 10, radius: 5 }
+            { id: "bike", name: "🚲 Велосипед", tank: 0, cons: 0, hpLoss: 0.1, sleepBonus: 0, radius: 5 }
         ]
     },
 
     prices: {
         1: { hotel: 400, hostel: 250, rest: 300, fastfood: 150, repair: 10, gas: 7, exc: 200, quizReward: 150 },
         2: { hotel: 300, hostel: 150, rest: 200, fastfood: 100, repair: 7,  gas: 6, exc: 100, quizReward: 100 },
-        3: { hotel: 0,   hostel: 100, rest: 0,   fastfood: 80,  repair: 5,  gas: 6, exc: 50,  quizReward: 500 } // Скрытые
+        3: { hotel: 0,   hostel: 100, rest: 0,   fastfood: 80,  repair: 5,  gas: 6, exc: 50,  quizReward: 500 } 
     },
 
     cities: [
-        // УРОВЕНЬ 1
         { id: "moscow", name: "Москва", tier: 1, coords: [55.7558, 37.6173], fact: "Столица России.", quests: [{q: "Год основания?", a: ["1147", "1242", "1380"], right: 0}] },
         { id: "belgorod", name: "Белгород", tier: 1, coords: [50.5997, 36.5982], fact: "Город первого салюта.", quests: [{q: "Что добывают рядом?", a: ["Мел", "Уголь", "Нефть"], right: 0}] },
         { id: "bryansk", name: "Брянск", tier: 1, coords: [53.2415, 34.3715], fact: "Партизанская слава.", quests: [{q: "Мемориал?", a: ["Партизанская поляна", "Курган", "Стелла"], right: 0}] },
@@ -41,7 +40,6 @@ window.Data = {
         { id: "tula", name: "Тула", tier: 1, coords: [54.1931, 37.6173], fact: "Оружейная столица.", quests: [{q: "Мастер?", a: ["Левша", "Кулибин", "Попов"], right: 0}] },
         { id: "yaroslavl", name: "Ярославль", tier: 1, coords: [57.6265, 39.8938], fact: "Столица Золотого кольца.", quests: [{q: "Символ?", a: ["Медведь", "Олень", "Лев"], right: 0}] },
 
-        // УРОВЕНЬ 2
         { id: "sergiev_posad", name: "Сергиев Посад", tier: 2, coords: [56.3000, 38.1333], fact: "Троице-Сергиева Лавра.", quests: [{q: "Основатель?", a: ["Сергий Радонежский", "Петр I", "Дмитрий Донской"], right: 0}] },
         { id: "pereslavl", name: "Переславль", tier: 2, coords: [56.7388, 38.8559], fact: "Родина потешного флота.", quests: [{q: "Озеро?", a: ["Плещеево", "Неро", "Селигер"], right: 0}] },
         { id: "rostov_velikiy", name: "Ростов Великий", tier: 2, coords: [57.1866, 39.4144], fact: "Ростовская финифть.", quests: [{q: "Фильм в Кремле?", a: ["Иван Васильевич", "Гардемарины", "Вий"], right: 0}] },
@@ -52,7 +50,6 @@ window.Data = {
         { id: "gorohovec", name: "Гороховец", tier: 2, coords: [56.2052, 42.6749], fact: "Купеческие палаты.", quests: [{q: "Река?", a: ["Клязьма", "Ока", "Волга"], right: 0}] },
         { id: "ples", name: "Плёс", tier: 2, coords: [57.4589, 41.5161], fact: "Русская Швейцария.", quests: [{q: "Художник?", a: ["Левитан", "Шишкин", "Репин"], right: 0}] },
 
-        // УРОВЕНЬ 3 (Скрытые)
         { id: "myshkin", name: "Мышкин", tier: 3, coords: [57.7889, 38.4552], fact: "Город мышей.", quests: [{q: "Музей?", a: ["Мыши", "Сыра", "Кота"], right: 0}] },
         { id: "borovsk", name: "Боровск", tier: 3, coords: [55.2058, 36.4866], fact: "Город фресок.", quests: [{q: "Кого сослали?", a: ["Аввакума", "Декабристов", "Большевиков"], right: 0}] },
         { id: "tarusa", name: "Таруса", tier: 3, coords: [54.7271, 37.1811], fact: "Город поэтов.", quests: [{q: "Поэтесса?", a: ["Цветаева", "Ахматова", "Блок"], right: 0}] },

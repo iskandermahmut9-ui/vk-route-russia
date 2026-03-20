@@ -4,7 +4,7 @@ window.Game = {
         coins: 1500, gas: 0, food: 100, wake: 100, hp: 100,
         car: null, diff: null, currentCity: null, history: [], collected: [], discovered: [],
         isMoving: false, hotelPaid: false, excPaid: false,
-        driveMode: null, kmSinceEvent: 0 // Счетчик для сюрпризов
+        driveMode: null, kmSinceEvent: 0, travelData: null
     },
 
     init: async function() {
@@ -19,7 +19,7 @@ window.Game = {
 
         this.map = L.map('map', { zoomControl: false }).setView([55.75, 38.0], 6);
         L.control.zoom({position: 'topright'}).addTo(this.map);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(this.map);
 
         this.renderMap();
         this.bindEvents();
@@ -50,15 +50,10 @@ window.Game = {
     renderMap: function() {
         Data.cities.forEach(c => {
             let isHidden = c.tier === 3;
-            // ИСПОЛЬЗУЕМ КРАСИВЫЕ ПИНЫ РАЗНЫХ ЦВЕТОВ
             let tierClass = c.tier === 1 ? 'marker-tier-1' : (c.tier === 2 ? 'marker-tier-2' : 'marker-tier-3');
             if (isHidden) tierClass += ' hidden-tier';
             
-            let icon = L.divIcon({ 
-                className: `map-pin ${tierClass}`, 
-                html: '<i class="fa-solid fa-location-dot"></i>',
-                iconSize: [30, 30], iconAnchor: [15,30] 
-            });
+            let icon = L.divIcon({ className: `map-pin ${tierClass}`, html: '<i class="fa-solid fa-location-dot"></i>', iconSize: [30, 30], iconAnchor: [15,30] });
             let m = L.marker(c.coords, {icon: icon}).addTo(this.map);
             this.markers[c.id] = m;
 
@@ -78,11 +73,11 @@ window.Game = {
         this.state.history.push(city.id);
         this.updateMarkers();
         
-        // Машинка теперь иконка!
         let carIcon = L.divIcon({className: 'marker-car', html: '<i class="fa-solid fa-car-side"></i>'});
         this.carMarker = L.marker(city.coords, {icon: carIcon}).addTo(this.map);
 
-        this.toast(`Старт из: ${city.name}. Выберите следующую точку на карте!`);
+        document.getElementById('city-overlay').style.display = 'none';
+        this.toast(`Старт задан. Выберите следующую цель на карте!`);
     },
 
     confirmTravel: async function(targetCity) {
@@ -94,7 +89,6 @@ window.Game = {
             const distKm = data.routes[0].distance / 1000;
             const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
 
-            // ВМЕСТО ЕЗДЫ СРАЗУ, ОТКРЫВАЕМ ВЫБОР РЕЖИМА
             document.getElementById('drive-target-name').innerText = targetCity.name;
             document.getElementById('drive-target-dist').innerText = Math.round(distKm);
             
@@ -118,11 +112,13 @@ window.Game = {
         this.executeTravel(city, distKm, coords);
     },
 
-    // ПЛАВНАЯ АНИМАЦИЯ И СОБЫТИЯ НА ТРАССЕ
     executeTravel: function(city, distKm, coords) {
         document.getElementById('city-overlay').style.display = 'none';
         
         let gameHours = distKm / this.state.driveMode.speed;
+        let realSeconds = (gameHours * 60) / 30; // 1 сек = 30 мин. (Ускорено!)
+        let durationMs = realSeconds * 1000; 
+
         document.getElementById('travel-hud').style.display = 'block';
         document.getElementById('hud-target').innerText = city.name;
         document.getElementById('hud-time').innerText = Math.round(gameHours);
@@ -132,145 +128,147 @@ window.Game = {
         this.routeLines.push(line);
         this.state.isMoving = true;
 
-        let steps = coords.length;
-        let currentStep = 0;
-        let kmPassedTotal = 0;
-        
-        // Точная интерполяция по координатам
-        this.animationInterval = setInterval(() => {
-            currentStep += 0.5; // Плавный шаг
-            
-            if (currentStep >= steps - 1) {
-                this.finalizeTravel(city, line, distKm);
-                return;
-            }
+        // Сохраняем стейт для возможности паузы
+        this.state.travelData = {
+            city: city, line: line, coords: coords,
+            totalSteps: coords.length,
+            currentStep: 0, kmPassedTotal: 0,
+            stepKm: distKm / coords.length,
+            wakeDrain: (distKm / coords.length / 700) * 100, // 700 км = 100%
+            foodDrain: (distKm / coords.length / 700) * 100 * (this.state.car.id !== "bike" ? 1 : 2),
+            gasDrain: (this.state.car.id !== "bike" ? (this.state.car.cons / 100) * (distKm / coords.length) * this.state.driveMode.gasMult : 0),
+            hpDrain: ((distKm / coords.length) / 100) * this.state.car.hpLoss,
+            speedInc: Math.max(1, coords.length / (durationMs / 30))
+        };
 
-            let idx = Math.floor(currentStep);
-            let frac = currentStep - idx;
-            let p1 = coords[idx];
-            let p2 = coords[idx + 1];
-            
-            // Интерполяция позиции
-            let lat = p1[0] + (p2[0] - p1[0]) * frac;
-            let lng = p1[1] + (p2[1] - p1[1]) * frac;
-            let pos = [lat, lng];
-            
-            this.carMarker.setLatLng(pos);
-            if(window.innerWidth > 768) this.map.panTo(pos, {animate: true, duration: 0.1});
-
-            // Математика за этот микро-шаг (приближенно)
-            let stepKm = distKm / steps * 0.5;
-            kmPassedTotal += stepKm;
-            this.state.kmSinceEvent += stepKm;
-            document.getElementById('hud-dist').innerText = Math.round(kmPassedTotal);
-
-            // Трата (700 км = 100%)
-            let drainPct = (stepKm / 700) * 100;
-            this.state.wake -= drainPct;
-            this.state.food -= drainPct * (this.state.car.id !== "bike" ? 1 : 2); // велик жрет еду х2
-            
-            if (this.state.car.id !== "bike") {
-                this.state.gas -= (this.state.car.cons / 100) * stepKm * this.state.driveMode.gasMult;
-            }
-            this.state.hp -= (stepKm / 100) * this.state.car.hpLoss;
-
-            this.updateTopUI();
-
-            // Проверка на проигрыш (Бензин 0)
-            if (this.state.gas <= 0 && this.state.car.id !== "bike") {
-                clearInterval(this.animationInterval);
-                this.showConfirm("Бак пуст!", "Вы заглохли на трассе. Вызвать эвакуатор за 1000 монет?", () => {
-                    if (this.state.coins >= 1000) {
-                        this.state.coins -= 1000; this.state.gas = 10; this.updateTopUI(); this.resumeTravel();
-                    } else { this.toast("Денег нет! Игра окончена."); setTimeout(() => window.location.reload(), 2000); }
-                });
-                return;
-            }
-
-            // МЕХАНИКА: СОБЫТИЯ НА ТРАССЕ (~300 км)
-            if (this.state.kmSinceEvent >= 300) {
-                this.state.kmSinceEvent = 0;
-                clearInterval(this.animationInterval);
-                this.triggerRandomEvent();
-                return;
-            }
-
-            // МЕХАНИКА: ЗАЕЗД В ГОРОДА (Включая 3 уровень)
-            if (this.state.driveMode.radMult > 0) {
-                Data.cities.forEach(c => {
-                    if (c.id !== city.id && c.id !== this.state.currentCity.id && !this.state.history.includes(c.id)) {
-                        let distMeters = this.map.distance(pos, c.coords);
-                        let radar = this.state.car.radius * this.state.driveMode.radMult * 1000;
-                        if (distMeters <= radar) {
-                            clearInterval(this.animationInterval);
-                            this.triggerPassingCity(c, city, line, distKm - kmPassedTotal, coords.slice(idx));
-                        }
-                    }
-                });
-            }
-
-        }, 20); // Быстрый интервал для плавности
+        this.resumeTravel();
     },
 
+    // ВОЗОБНОВЛЕНИЕ ДВИЖЕНИЯ ПОСЛЕ КАМЕР И ПАУЗ
     resumeTravel: function() {
-        // Просто перезапускаем интервал
+        let td = this.state.travelData;
         this.state.isMoving = true;
-        // Для упрощения, продолжаем с текущими параметрами. В полной версии тут нужен рестарт executeTravel от текущей точки.
+
+        this.animationInterval = setInterval(() => {
+            td.currentStep += td.speedInc;
+            
+            if (td.currentStep >= td.totalSteps - 1) {
+                td.currentStep = td.totalSteps - 1;
+                clearInterval(this.animationInterval);
+            }
+
+            let idx = Math.floor(td.currentStep);
+            if(idx >= td.totalSteps - 1) idx = td.totalSteps - 2;
+            let frac = td.currentStep - idx;
+            let p1 = td.coords[idx];
+            let p2 = td.coords[idx + 1];
+            
+            if(p1 && p2) {
+                let lat = p1[0] + (p2[0] - p1[0]) * frac;
+                let lng = p1[1] + (p2[1] - p1[1]) * frac;
+                let pos = [lat, lng];
+                
+                this.carMarker.setLatLng(pos);
+                if(window.innerWidth > 768) this.map.panTo(pos, {animate: true, duration: 0.1});
+
+                // Траты
+                let actualStepDist = td.stepKm * td.speedInc;
+                td.kmPassedTotal += actualStepDist;
+                this.state.kmSinceEvent += actualStepDist;
+                document.getElementById('hud-dist').innerText = Math.round(td.kmPassedTotal);
+
+                this.state.wake -= td.wakeDrain * td.speedInc;
+                this.state.food -= td.foodDrain * td.speedInc;
+                this.state.gas -= td.gasDrain * td.speedInc;
+                this.state.hp -= td.hpDrain * td.speedInc;
+
+                this.updateTopUI();
+
+                if (this.state.gas <= 0 && this.state.car.id !== "bike") {
+                    clearInterval(this.animationInterval);
+                    this.showConfirm("Бак пуст!", "Вы заглохли на трассе. Вызвать эвакуатор за 1000 монет?", () => {
+                        if (this.state.coins >= 1000) {
+                            this.state.coins -= 1000; this.state.gas = 10; this.updateTopUI(); this.resumeTravel();
+                        } else { this.toast("Денег нет! Игра окончена."); setTimeout(() => window.location.reload(), 2000); }
+                    });
+                    return;
+                }
+
+                // Случайные события (каждые 300 км)
+                if (this.state.kmSinceEvent >= 300) {
+                    this.state.kmSinceEvent = 0;
+                    clearInterval(this.animationInterval);
+                    this.triggerRandomEvent();
+                    return;
+                }
+
+                // Заезд в скрытые города
+                if (this.state.driveMode.radMult > 0) {
+                    Data.cities.forEach(c => {
+                        if (c.id !== td.city.id && c.id !== this.state.currentCity.id && !this.state.history.includes(c.id)) {
+                            let distanceMeters = this.map.distance(pos, c.coords);
+                            let radar = this.state.car.radius * this.state.driveMode.radMult * 1000;
+                            if (distanceMeters <= radar) {
+                                clearInterval(this.animationInterval);
+                                this.triggerPassingCity(c, td.city, td.line);
+                            }
+                        }
+                    });
+                }
+            }
+
+            if (td.currentStep >= td.totalSteps - 1) {
+                if(this.state.gas < 0) this.state.gas = 0;
+                if(this.state.wake < 0) this.state.wake = 0;
+                if(this.state.food < 0) this.state.food = 0;
+                if(this.state.hp < 0) this.state.hp = 0;
+                this.finishTravel(td.city, td.line);
+            }
+        }, 30);
     },
 
     triggerRandomEvent: function() {
         let events = [
-            { t: "Попутчик", d: "Вы подвезли веселого студента. Он дал вам на бензин.", coins: 200, hp: 0 },
-            { t: "Камера ГИБДД", d: "Вспышка! Вы превысили скорость.", coins: -250, hp: 0 },
-            { t: "Яма на дороге", d: "Удар подвески был сильным.", coins: 0, hp: -10 }
+            { t: "Попутчик", d: "Вы подвезли студента. Он скинул на бензин: +200 монет.", coins: 200, hp: 0 },
+            { t: "Камера ГИБДД", d: "Вспышка! Вы превысили скорость. Штраф: -250 монет.", coins: -250, hp: 0 },
+            { t: "Яма на дороге", d: "Сильный удар подвески. Потребуется ремонт (-10% прочности).", coins: 0, hp: -10 }
         ];
         let ev = events[Math.floor(Math.random() * events.length)];
-        
-        // Если тапка в пол - шанс камеры выше.
         if(this.state.driveMode.speed === 140 && Math.random() < 0.5) ev = events[1];
 
-        document.getElementById('event-title').innerText = ev.t;
-        document.getElementById('event-desc').innerText = ev.d;
+        document.getElementById('modal-title').innerText = ev.t;
+        document.getElementById('modal-text').innerText = ev.d;
+        document.getElementById('custom-modal').style.display = 'flex';
         
-        let btnOk = document.createElement('button');
-        btnOk.className = 'btn-action'; btnOk.innerText = "ПОНЯТНО";
-        btnOk.onclick = () => {
-            this.state.coins += ev.coins;
-            this.state.hp += ev.hp;
-            document.getElementById('event-modal').style.display = 'none';
+        document.getElementById('btn-modal-ok').onclick = () => {
+            this.state.coins += ev.coins; this.state.hp += ev.hp;
+            document.getElementById('custom-modal').style.display = 'none';
             this.updateTopUI();
-            this.state.isMoving = true; // Возобновляем (в идеале перестроить маршрут)
-            this.toast("Событие обработано. Движение пока не возобновлено в демо-отрезке (нажмите на город заново).");
+            this.resumeTravel(); // Продолжаем путь!
         };
-        document.getElementById('event-actions').innerHTML = '';
-        document.getElementById('event-actions').appendChild(btnOk);
-        document.getElementById('event-modal').style.display = 'flex';
+        document.getElementById('btn-modal-cancel').style.display = 'none';
     },
 
-    triggerPassingCity: function(passingCity, targetCity, line, remainingKm, remainingCoords) {
-        this.state.history.push(passingCity.id); // Чтобы не спрашивать дважды
+    triggerPassingCity: function(passingCity, targetCity, line) {
+        this.state.history.push(passingCity.id);
         document.getElementById('passing-city-name').innerText = passingCity.name;
         
         if (passingCity.tier === 3) {
             this.markers[passingCity.id].getElement().classList.remove('hidden-tier');
             this.markers[passingCity.id].getElement().classList.add('marker-discovered');
+            this.state.discovered.push(passingCity.id);
         }
 
         document.getElementById('passing-modal').style.display = 'flex';
         
         document.getElementById('btn-passing-yes').onclick = () => {
             document.getElementById('passing-modal').style.display = 'none';
-            this.finishTravel(passingCity, line); // Завершаем поездку здесь!
+            this.finishTravel(passingCity, line); // Сворачиваем!
         };
         document.getElementById('btn-passing-no').onclick = () => {
             document.getElementById('passing-modal').style.display = 'none';
-            this.toast("Едем дальше по маршруту. (В демо нажмите на город цели снова)");
+            this.resumeTravel(); // Едем дальше мимо
         };
-    },
-
-    finalizeTravel: function(city, line, distKm) {
-        clearInterval(this.animationInterval);
-        this.finishTravel(city, line);
     },
 
     finishTravel: function(city, line) {
@@ -298,15 +296,10 @@ window.Game = {
             let m = this.markers[id];
             let el = m.getElement();
             if(!el) return;
-            
-            let c = Data.cities.find(x => x.id === id);
-            if (this.state.collected.includes(id)) {
-                el.className = 'map-pin marker-collected leaflet-marker-icon leaflet-zoom-animated leaflet-interactive';
-            }
+            if (this.state.collected.includes(id)) el.className = 'map-pin marker-collected leaflet-marker-icon leaflet-zoom-animated leaflet-interactive';
         });
     },
 
-    // МАГАЗИН (Мелкие кнопки)
     openCityUI: function(city) {
         this.state.hotelPaid = false;
         this.state.excPaid = false;
@@ -316,6 +309,14 @@ window.Game = {
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
         document.getElementById('city-fact').innerText = city.fact;
         
+        // Логика текста про сон
+        if (this.state.car.id === "camper") {
+            document.getElementById('hotel-hint').innerText = "Без оплаты вы спите в Автодоме (+100% бодрости).";
+        } else {
+            document.getElementById('hotel-hint').innerText = "Сон в обычной машине не восстанавливает бодрость.";
+        }
+        
+        document.getElementById('btn-leave-city').style.display = 'block';
         this.renderCityShop(city);
     },
 
@@ -323,7 +324,6 @@ window.Game = {
         const p = Data.prices[city.tier];
         let html = "";
 
-        // 1. НОЧЛЕГ
         html += `<div class="shop-category"><h4>🛏️ Ночлег</h4><div class="btn-group">`;
         if (p.hotel > 0) {
             let isFull = this.state.wake >= 100 || this.state.hotelPaid;
@@ -337,7 +337,6 @@ window.Game = {
         }
         html += `</div></div>`;
 
-        // 2. ЕДА
         html += `<div class="shop-category"><h4>🍔 Питание</h4><div class="btn-group">`;
         if (p.rest > 0) {
             let isFull = this.state.food >= 100;
@@ -351,7 +350,6 @@ window.Game = {
         }
         html += `</div></div>`;
 
-        // 3. БЕНЗИН
         if (this.state.car.id !== "bike" && p.gas > 0) {
             let missingGas = Math.floor(this.state.car.tank - this.state.gas);
             let fullPrice = missingGas * p.gas;
@@ -364,7 +362,6 @@ window.Game = {
             html += `</div></div>`;
         }
 
-        // 4. СТО
         if (this.state.car.id !== "bike" && p.repair > 0) {
             let missingHp = Math.floor(100 - this.state.hp);
             let fullPrice = missingHp * p.repair;
@@ -377,7 +374,6 @@ window.Game = {
             html += `</div></div>`;
         }
 
-        // 5. ЭКСКУРСИЯ
         if (p.exc > 0) {
             html += `<div class="shop-category" style="border:none;"><h4>🎫 Культура</h4><div class="btn-group">`;
             html += `<button class="btn-shop ${this.state.excPaid ? 'purchased' : ''}" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.buyItem('exc', ${p.exc}, 0)">
@@ -417,14 +413,17 @@ window.Game = {
     },
 
     leaveCity: function() {
-        if (!this.state.hotelPaid && this.state.currentCity.tier !== 3) {
-            this.state.wake = Math.min(100, this.state.wake + this.state.car.sleepBonus);
-            this.toast(`Ночевка в машине (+${this.state.car.sleepBonus}% бодрости).`);
+        if (!this.state.hotelPaid) {
+            if (this.state.car.id === "camper") {
+                this.state.wake = 100;
+                this.toast("Ночевка в Автодоме (+100% бодрости).");
+            } else {
+                this.toast("Вы поехали дальше без отдыха.");
+            }
         }
         
         this.updateTopUI();
         document.getElementById('city-overlay').style.display = 'none';
-        this.toast("Выберите следующий город на карте!");
     },
 
     updateTopUI: function() {
@@ -438,6 +437,7 @@ window.Game = {
     showConfirm: function(title, text, onYes) {
         document.getElementById('modal-title').innerText = title;
         document.getElementById('modal-text').innerText = text;
+        document.getElementById('btn-modal-cancel').style.display = 'block';
         document.getElementById('custom-modal').style.display = 'flex';
         document.getElementById('btn-modal-ok').onclick = () => { document.getElementById('custom-modal').style.display='none'; onYes(); };
         document.getElementById('btn-modal-cancel').onclick = () => { document.getElementById('custom-modal').style.display='none'; };
@@ -457,7 +457,7 @@ window.Game = {
                     this.state.coins += reward; 
                     this.toast(`Верно! Вы заработали ${reward} монет.`); 
                 } else { 
-                    this.toast("Неверный ответ! Опыта нет."); 
+                    this.toast("Неверный ответ!"); 
                 }
                 this.updateTopUI();
                 this.openCityUI(city);
@@ -469,12 +469,10 @@ window.Game = {
 
     openAlbum: function() {
         let grid = document.getElementById('album-grid'); grid.innerHTML = '';
-        
-        // ПОКАЗЫВАЕМ ТОЛЬКО СОБРАННЫЕ ГОРОДА
         let collectedCities = Data.cities.filter(c => this.state.collected.includes(c.id));
         
         if (collectedCities.length === 0) {
-            grid.innerHTML = "<p style='color:#aaa;'>Альбом пока пуст. Выполняйте условия в городах.</p>";
+            grid.innerHTML = "<p style='color:#aaa;'>Альбом пока пуст. Оплачивайте отель и экскурсии в городах.</p>";
         } else {
             collectedCities.forEach(c => {
                 grid.innerHTML += `
