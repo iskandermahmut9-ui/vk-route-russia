@@ -45,13 +45,11 @@
             <span id="city-tier" class="tier-badge">Уровень</span>
             <p id="city-fact" class="city-fact"></p>
             
-            <div id="city-shop" class="city-shop">
-                </div>
+            <div id="city-shop" class="city-shop"></div>
             
             <div class="city-footer">
-                <p id="hotel-hint" class="hint-text" style="text-align:center; margin-bottom:10px;"></p>
                 <button class="btn-action btn-ad" id="btn-city-ad"><i class="fa-solid fa-play"></i> РЕКЛАМА (+500 <i class="fa-solid fa-coins"></i>)</button>
-                <button class="btn-action btn-leave" id="btn-leave-city" style="display:none;">ЕХАТЬ ДАЛЬШЕ <i class="fa-solid fa-arrow-right"></i></button>
+                <button class="btn-action btn-leave" id="btn-leave-city">ЕХАТЬ ДАЛЬШЕ <i class="fa-solid fa-arrow-right"></i></button>
             </div>
         </div>
     </div>
@@ -105,8 +103,8 @@
 
 <div id="passing-modal" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-head" style="color: #2196F3;">УКАЗАТЕЛЬ</div>
-        <p style="font-size: 15px; margin-bottom: 25px;">Вы проезжаете мимо локации: <b id="passing-city-name" style="color:#fff;"></b>. Желаете свернуть с маршрута?</p>
+        <div class="modal-head" style="color: #2196F3;">РАДАР ОБНАРУЖИЛ ГОРОД</div>
+        <p style="font-size: 15px; margin-bottom: 25px;">Вы проезжаете мимо локации: <b id="passing-city-name" style="color:#FFD700;"></b>. Желаете перестроить маршрут и заехать?</p>
         <div style="display: flex; gap: 10px;">
             <button class="btn-action" id="btn-passing-yes" style="background: #2196F3;">СВЕРНУТЬ</button>
             <button class="btn-action btn-leave" id="btn-passing-no">ЕХАТЬ ДАЛЬШЕ</button>
@@ -116,8 +114,7 @@
 
 <div id="quest-modal" class="modal-overlay">
     <div class="modal-box">
-        <h3 id="quest-city-name" style="color: #fff; margin-top: 0;">Город</h3>
-        <div class="modal-head" style="color:#FFD700;">ВИКТОРИНА</div>
+        <div class="modal-head" style="color:#FFD700;">ВИКТОРИНА: <span id="quest-city-name"></span></div>
         <div id="quest-text" style="font-size: 16px; margin-bottom: 20px;"></div>
         <div id="quest-answers" style="display: flex; flex-direction: column; gap: 10px;"></div>
     </div>
