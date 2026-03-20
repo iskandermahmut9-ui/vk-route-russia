@@ -130,3 +130,6 @@ body.vk-light .car-card { background: #f9f9f9; border-color: #ddd; }
     /* Сдвигаем контролы Leaflet повыше, чтобы не перекрывались ресурсами */
     .leaflet-bottom.leaflet-right { bottom: 70px !important; }
 }
+@media screen and (max-width: 768px) {
+    .sidebar { overflow-y: auto; padding-bottom: 90px !important; }
+}

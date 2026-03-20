@@ -41,8 +41,14 @@
     <div class="sidebar" id="game-panel">
         <div class="mobile-drag-handle"></div>
 
-        <div id="status-text" class="status-panel">
-            <i class="fa-solid fa-map-location-dot"></i> Выберите город на карте для старта экспедиции.
+        <div class="status-panel">
+            <div id="status-text">
+                <i class="fa-solid fa-map-location-dot"></i> Выберите город для СТАРТА экспедиции.
+            </div>
+            <div id="trip-stats" style="display: none; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 10px; padding-top: 10px; font-size: 11px; color: #aaa; font-weight: bold;">
+                <span>🛣️ Пройдено: <span id="stat-km" style="color:#fff;">0</span> км</span>
+                <span>⏱️ Время: <span id="stat-hours" style="color:#fff;">0</span> ч.</span>
+            </div>
         </div>
 
         <div id="city-info" style="display: none;">
