@@ -5,87 +5,80 @@ window.Engine = {
     isMoving: false,
 
     init: function() {
-        console.log("Запуск движка карты...");
+        console.log("Запуск карты...");
         
-        // 1. Рисуем карту (Центр - где-то между Москвой и Казанью)
-        this.map = L.map('map', { zoomControl: false }).setView([55.75, 40.0], 6);
+        // Рисуем карту (Центр - Владимир)
+        this.map = L.map('map', { zoomControl: false }).setView([56.12, 40.40], 6);
         L.control.zoom({position: 'topright'}).addTo(this.map);
         
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO'
+            attribution: '&copy; CARTO' // Аттрибуцию спрячем в CSS, тут оставим для порядка
         }).addTo(this.map);
 
-        // 2. Ставим машинку на старт (Москва)
+        // Машинка на старте (Москва)
         this.carMarker = L.marker([55.7558, 37.6173]).addTo(this.map);
 
-        // 3. Рисуем города из базы
         this.renderCities();
     },
 
     renderCities: function() {
         DataLoader.cities.forEach(city => {
-            const cityMarker = L.marker(city.coords).addTo(this.map);
+            // Создаем кастомный желтый круглый маркер (через DivIcon)
+            const cityIcon = L.divIcon({
+                className: 'city-marker',
+                iconSize: [20, 20], // Размер кружка
+                iconAnchor: [10, 10] // Центрирование
+            });
+
+            const cityMarker = L.marker(city.coords, {icon: cityIcon}).addTo(this.map);
             
             cityMarker.on('click', () => {
-                if (this.isMoving) {
-                    UI.showToast("Машина уже в пути! Не отвлекайте водителя.");
-                    return;
-                }
-                
-                UI.showModal("Проложить маршрут?", `Вы уверены, что хотите поехать в ${city.name}?`, true, () => {
-                    this.travelTo(city);
-                });
+                if (this.isMoving) { UI.showToast("Машина в пути!"); return; }
+                UI.showModal("Маршрут?", `Поехать в ${city.name}?`, true, () => { this.travelTo(city); });
             });
         });
     },
 
-    // Функция запроса дороги у OSRM и анимации
     travelTo: async function(targetCity) {
         this.isMoving = true;
         const startCoords = this.carMarker.getLatLng();
-        document.getElementById('status-text').innerHTML = `🚙 Строим маршрут в ${targetCity.name}...`;
+        UI.updateStatus(`🚙 Строим маршрут в ${targetCity.name}...`);
 
         try {
-            // Обращение к OSRM (Важно: OSRM ест координаты в формате lng,lat)
             const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.lng},${startCoords.lat};${targetCity.coords[1]},${targetCity.coords[0]}?overview=full&geometries=geojson`;
             const response = await fetch(url);
             const data = await response.json();
 
-            if (data.code !== "Ok") throw new Error("Маршрут не найден");
+            if (data.code !== "Ok") throw new Error("Нет пути");
 
-            // Конвертируем ответ OSRM обратно для Leaflet (lat, lng)
             const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
             
-            // Рисуем синюю линию будущего пути
             if (this.routeLine) this.map.removeLayer(this.routeLine);
-            this.routeLine = L.polyline(routeCoords, {color: '#3498db', weight: 4, dashArray: '10, 10'}).addTo(this.map);
+            // ЦВЕТ ТРЕКА - ОРАНЖЕВЫЙ
+            this.routeLine = L.polyline(routeCoords, {color: '#FF9800', weight: 5, opacity: 0.8}).addTo(this.map);
 
-            document.getElementById('status-text').innerHTML = `🚗 Едем в ${targetCity.name}!`;
+            UI.updateStatus(`🚗 Едем в ${targetCity.name}!`);
 
-            // Запускаем анимацию по точкам
             let step = 0;
             const interval = setInterval(() => {
                 if (step >= routeCoords.length) {
-                    // Приехали!
                     clearInterval(interval);
                     this.isMoving = false;
-                    this.map.removeLayer(this.routeLine); // Убираем линию
-                    UI.showToast(`Вы прибыли в ${targetCity.name}!`);
-                    UI.openCityPanel(targetCity); // Открываем интерфейс города
+                    this.map.removeLayer(this.routeLine); 
+                    UI.showToast(`Прибыли в ${targetCity.name}!`);
+                    UI.openCityPanel(targetCity); 
                     return;
                 }
-
-                // Двигаем маркер и камеру
                 this.carMarker.setLatLng(routeCoords[step]);
-                this.map.panTo(routeCoords[step], {animate: true, duration: 0.1});
+                // На мобильных не центрируем карту резко, чтобы панель снизу не мешала
+                if(window.innerWidth > 768) this.map.panTo(routeCoords[step], {animate: true, duration: 0.1});
                 
-                // Скорость машинки (перепрыгиваем через 5 точек для скорости)
-                step += 5; 
+                step += 8; // Чуть быстрее едем
             }, 50);
 
         } catch (error) {
             console.error(error);
-            UI.showToast("Ошибка навигатора! Невозможно проложить путь.");
+            UI.showToast("Ошибка навигатора!");
             this.isMoving = false;
         }
     }

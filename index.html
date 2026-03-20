@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Маршрут: Россия | VK Mini App</title>
+    <title>Маршруты: Россия 🚙 | VK Mini App</title>
     
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -13,15 +13,19 @@
     
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="vk-dark"> <header class="header">
+<body class="vk-dark">
+
+<header class="header">
     <div class="header-left">
-        <div class="logo">МАРШРУТ: РОССИЯ 🚙</div>
+        <div class="logo">МАРШРУТЫ: РОССИЯ 🚙</div>
     </div>
     
     <div class="header-center" id="resource-panel" style="display: none;">
         <div class="res-item" title="Монеты"><i class="fa-solid fa-coins" style="color: #FFD700;"></i> <span id="val-coins">5000</span></div>
         <div class="res-item" title="Бензин"><i class="fa-solid fa-gas-pump" style="color: #FF5722;"></i> <span id="val-gas">100</span>%</div>
-        <div class="res-item" title="Прочность"><i class="fa-solid fa-wrench" style="color: #4CAF50;"></i> <span id="val-hp">100</span>%</div>
+        <div class="res-item" title="Еда"><i class="fa-solid fa-utensils" style="color: #8BC34A;"></i> <span id="val-food">100</span>%</div>
+        <div class="res-item" title="Бодрость"><i class="fa-solid fa-bed" style="color: #2196F3;"></i> <span id="val-wake">100</span>%</div>
+        <div class="res-item xp-item" title="Очки блогера"><i class="fa-solid fa-camera" style="color: #9C27B0;"></i> <span id="val-xp">0</span> XP</div>
     </div>
 
     <div class="header-right">
@@ -29,28 +33,31 @@
             <span id="player-name">Загрузка...</span>
             <img id="player-avatar" src="assets/ui/default_avatar.png" alt="Аватар">
         </div>
+        <button id="btn-close-app" class="btn-icon-close" title="Закрыть приложение"><i class="fa-solid fa-xmark"></i></button>
     </div>
 </header>
 
 <div class="main-container">
     <div class="sidebar" id="game-panel">
+        <div class="mobile-drag-handle"></div>
+
         <div id="status-text" class="status-panel">
             <i class="fa-solid fa-map-location-dot"></i> Выберите город на карте для старта экспедиции.
         </div>
 
         <div id="city-info" style="display: none;">
-            <h2 id="city-name" style="margin-top:0; color:var(--accent); font-family:'Russo One', sans-serif;">Город</h2>
+            <h2 id="city-name" class="city-title">Город</h2>
             <span id="city-tier" class="tier-badge">Уровень</span>
-            <p id="city-fact" style="font-size: 13px; color: var(--text-dim); margin: 15px 0; line-height: 1.4;"></p>
+            <p id="city-fact" class="city-fact"></p>
             
             <div class="cost-box">
                 <div class="cost-row">
                     <span><i class="fa-solid fa-bed"></i> Ночлег:</span>
-                    <span id="cost-hotel" class="cost-val">0 ₽</span>
+                    <span class="cost-val"><span id="cost-hotel">0</span> монет</span>
                 </div>
                 <div class="cost-row">
                     <span><i class="fa-solid fa-ticket"></i> Экскурсии:</span>
-                    <span id="cost-exc" class="cost-val">0 ₽</span>
+                    <span class="cost-val"><span id="cost-exc">0</span> монет</span>
                 </div>
                 <button class="btn-action" id="btn-pay-city">ОПЛАТИТЬ И ОТДОХНУТЬ</button>
             </div>
@@ -78,15 +85,16 @@
 </div>
 
 <div id="onboarding-modal" class="modal-overlay">
-    <div class="modal-box">
-        <div class="modal-head" style="color: var(--accent);">ДОБРО ПОЖАЛОВАТЬ! 🗺️</div>
-        <p style="font-size: 14px; line-height: 1.5; margin-bottom: 15px;">Вы отправляетесь в большое автопутешествие по России. Ваша цель — исследовать страну, выживать на трассе и зарабатывать рейтинг.</p>
-        <ul style="font-size: 13px; line-height: 1.6; color: var(--text-dim); padding-left: 20px; margin-bottom: 20px; text-align: left;">
-            <li>⛽ <b>Ресурсы:</b> Следите за бензином и прочностью авто.</li>
-            <li>❓ <b>Квесты:</b> Отвечайте на вопросы в городах, чтобы получать монеты.</li>
-            <li>📺 <b>Помощь:</b> Если кончились деньги — смотрите рекламу.</li>
+    <div class="modal-box" style="text-align: left; max-width: 500px;">
+        <div class="modal-head" style="text-align: center; color: var(--accent);">МАРШРУТЫ: РОССИЯ 🚙</div>
+        <p style="font-size: 14px; line-height: 1.5; margin-bottom: 15px;">Добро пожаловать в симулятор автопутешественника! Ваша цель — исследовать страну, выживать на трассе и стать топовым тревел-блогером.</p>
+        <ul style="font-size: 13px; line-height: 1.6; color: var(--text-dim); padding-left: 20px; margin-bottom: 20px;">
+            <li>⛽ <b>Ресурсы:</b> Следите за бензином, едой, бодростью и деньгами.</li>
+            <li>❓ <b>Квесты:</b> Отвечайте на вопросы в городах, чтобы получать монеты от спонсоров.</li>
+            <li>⚠️ <b>Случайные события:</b> На трассе может пробить колесо или встретиться красивый закат. Выбирайте с умом!</li>
+            <li>📺 <b>Помощь:</b> Закончились деньги? Жмите кнопку рекламы для получения бонуса!</li>
         </ul>
-        <button class="btn-action" id="btn-close-onboarding">ВЫБРАТЬ МАШИНУ</button>
+        <button class="btn-action" id="btn-close-onboarding">ВЫБРАТЬ МАШИНУ И НАЧАТЬ</button>
     </div>
 </div>
 
