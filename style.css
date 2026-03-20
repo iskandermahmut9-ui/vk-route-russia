@@ -489,3 +489,63 @@ input[type=range] {
         bottom: 60px !important; /* Сдвигаем зум выше шторки */
     }
 }
+/* =========================================
+   НОВЫЙ ИНТЕРФЕЙС ГОРОДА (УСЛУГИ)
+   ========================================= */
+.service-block { 
+    margin-bottom: 15px; 
+}
+.cb-label { 
+    display: flex; align-items: center; gap: 10px; 
+    cursor: pointer; font-size: 14px; font-weight: bold; 
+}
+.slider-wrap { 
+    display: none; margin-top: 10px; padding-left: 25px; 
+}
+.slider-header { 
+    display: flex; justify-content: space-between; 
+    font-size: 13px; font-weight: 700; margin-bottom: 8px; 
+}
+.val-text { color: #fff; }
+.gain-text { color: #4CAF50; }
+.hint-text { font-size: 11px; color: #888; margin: 5px 0 0 0; }
+
+.styled-slider { 
+    width: 100%; accent-color: var(--accent); 
+    height: 6px; background: #333; border-radius: 3px; outline: none; 
+}
+.total-block { 
+    margin-top: 20px; text-align: right; font-size: 18px; font-weight: bold; 
+}
+
+/* =========================================
+   АЛЬБОМ ДОСТИЖЕНИЙ
+   ========================================= */
+.album-card { 
+    background: #222; border: 2px solid #444; 
+    border-radius: 12px; padding: 15px 10px; 
+    text-align: center; transition: 0.3s; 
+}
+.album-card.collected { 
+    border-color: #FFD700; background: rgba(255, 215, 0, 0.1); 
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.2); 
+}
+.album-card i { font-size: 35px; margin-bottom: 12px; color: #555; }
+.album-card.collected i { color: #FFD700; }
+
+/* =========================================
+   НОВЫЕ МАРКЕРЫ НА КАРТЕ
+   ========================================= */
+.city-marker { 
+    background: #2196F3; border: 2px solid #fff; 
+    border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.6); 
+    cursor: pointer; transition: 0.2s;
+}
+.city-marker.collected { 
+    background: #FFD700; border-color: #000; 
+}
+.city-marker.current { 
+    background: #FF5722; width: 24px !important; height: 24px !important; 
+    margin-left: -12px !important; margin-top: -12px !important; 
+    z-index: 1000 !important; border: 3px solid #fff; 
+}

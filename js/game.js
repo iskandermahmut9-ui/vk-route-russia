@@ -3,7 +3,8 @@ window.Game = {
     state: {
         coins: 5000, gas: 0, food: 100, wake: 100, hp: 100,
         car: null, diff: null, mode: null,
-        currentCity: null, history: [], collected: [], isMoving: false
+        currentCity: null, history: [], collected: [], isMoving: false,
+        hasPaidHotel: false, hasPaidExc: false
     },
 
     init: function() {
@@ -27,19 +28,13 @@ window.Game = {
                 this.state.car = car;
                 this.state.gas = car.tank;
                 document.getElementById('garage-modal').style.display = 'none';
-                document.getElementById('mode-modal').style.display = 'flex';
+                document.getElementById('resource-panel').style.display = 'flex';
+                this.updateTopUI();
+                this.toast("Кликните на город на карте для старта!");
             };
             list.appendChild(div);
         });
         document.getElementById('garage-modal').style.display = 'flex';
-    },
-
-    selectMode: function(mode) {
-        this.state.mode = mode;
-        document.getElementById('mode-modal').style.display = 'none';
-        document.getElementById('resource-panel').style.display = 'flex';
-        this.updateTopUI();
-        this.toast("Кликните на город на карте для старта!");
     },
 
     renderMap: function() {
@@ -70,8 +65,8 @@ window.Game = {
         document.getElementById('status-text').style.display = 'none';
         document.getElementById('city-info').style.display = 'block';
         document.getElementById('city-name').innerText = city.name;
-        document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
-        document.getElementById('city-fact').innerText = "Стартовая точка. Выберите следующий город на карте.";
+        document.getElementById('city-tier').innerText = `Стартовая точка`;
+        document.getElementById('city-fact').innerText = "Вы готовы к экспедиции. Выберите следующую точку на карте.";
         document.getElementById('city-actions').style.display = 'none'; 
         
         if(window.innerWidth <= 768) document.getElementById('game-panel').classList.add('open');
@@ -101,6 +96,7 @@ window.Game = {
         let line = L.polyline(coords, {color: '#FF5722', weight: 4}).addTo(this.map);
         this.routeLines.push(line);
 
+        // Деньги НЕ списываем автоматически. Тратятся только ресурсы (Сытость, Бензин, Бодрость, Прочность)
         if (this.state.car.id !== "bike") this.state.gas -= (this.state.car.cons / 100) * distKm;
         else this.state.food -= (distKm * 0.5);
         
@@ -138,13 +134,11 @@ window.Game = {
         this.state.currentCity = city;
         this.state.history.push(city.id);
         
-        // Шлейф старых маршрутов
         this.routeLines.forEach(l => l.setStyle({color: '#666', weight: 3, dashArray: '5, 10'}));
         line.setStyle({color: '#FF5722', weight: 4, dashArray: null});
-
         this.updateMarkers();
         
-        // ВЫЗОВ КВЕСТА ТОЛЬКО ПО ПРИЕЗДУ
+        // КВЕСТ СРАЗУ ПО ПРИЕЗДУ
         if(city.quests && city.quests.length > 0) {
             this.showQuest(city);
         } else {
@@ -162,7 +156,14 @@ window.Game = {
         });
     },
 
+    // ====================================================
+    // МАГАЗИН (Свобода выбора)
+    // ====================================================
     openCityUI: function(city) {
+        // Сбрасываем флаги
+        this.state.hasPaidHotel = false;
+        this.state.hasPaidExc = false;
+
         document.getElementById('status-text').style.display = 'none';
         document.getElementById('city-actions').style.display = 'block';
         document.getElementById('city-info').style.display = 'block';
@@ -176,14 +177,10 @@ window.Game = {
         let chkHotel = document.getElementById('chk-hotel');
         let wrapHotel = document.getElementById('wrap-hotel');
         let slHotel = document.getElementById('sl-hotel');
-        document.getElementById('car-sleep-val').innerText = this.state.car.sleepBonus;
         
-        if (p.hotel > 0) {
-            chkHotel.disabled = false; chkHotel.checked = false; wrapHotel.style.display = 'none';
-            slHotel.min = p.hotel * 0.5; slHotel.max = p.hotel; slHotel.step = 50; slHotel.value = slHotel.min;
-        } else {
-            chkHotel.disabled = true; chkHotel.checked = false; wrapHotel.style.display = 'none';
-        }
+        chkHotel.checked = false; wrapHotel.style.display = 'none';
+        slHotel.min = p.hotelMin; slHotel.max = p.hotelMax; slHotel.step = 50; slHotel.value = p.hotelMin;
+        
         chkHotel.onchange = () => { wrapHotel.style.display = chkHotel.checked ? 'block' : 'none'; this.calcCityBill(p); };
         slHotel.oninput = () => this.calcCityBill(p);
 
@@ -192,18 +189,15 @@ window.Game = {
         let wrapFood = document.getElementById('wrap-food');
         let slFood = document.getElementById('sl-food');
 
-        if (p.food > 0) {
-            chkFood.disabled = false; chkFood.checked = false; wrapFood.style.display = 'none';
-            slFood.min = p.food * 0.5; slFood.max = p.food; slFood.step = 50; slFood.value = slFood.min;
-        } else {
-            chkFood.disabled = true; chkFood.checked = false; wrapFood.style.display = 'none';
-        }
+        chkFood.checked = false; wrapFood.style.display = 'none';
+        slFood.min = p.foodMin; slFood.max = p.foodMax; slFood.step = 50; slFood.value = p.foodMin;
+        
         chkFood.onchange = () => { wrapFood.style.display = chkFood.checked ? 'block' : 'none'; this.calcCityBill(p); };
         slFood.oninput = () => this.calcCityBill(p);
 
         // БЕНЗИН И РЕМОНТ
         let wrapGas = document.getElementById('wrap-gas-hp');
-        if (this.state.car.id === "bike" || (p.gasPerLiter === 0 && p.repairPerPercent === 0)) {
+        if (this.state.car.id === "bike" || (p.gas === 0 && p.repair === 0)) {
             wrapGas.style.display = 'none';
         } else {
             wrapGas.style.display = 'block';
@@ -231,49 +225,38 @@ window.Game = {
     calcCityBill: function(p) {
         let total = 0;
 
-        // Расчет Отеля
+        // Отель (от 50% до 100% бодрости)
         this.tempHotelGain = 0;
-        if (document.getElementById('chk-hotel').checked && p.hotel > 0) {
+        if (document.getElementById('chk-hotel').checked) {
             let cost = parseInt(document.getElementById('sl-hotel').value);
             total += cost;
             document.getElementById('out-hotel').innerText = cost;
-            // Пропорция от 50% до 100% бодрости
-            let minC = p.hotel * 0.5;
-            let percent = 50 + ((cost - minC) / (p.hotel - minC)) * 50;
+            let percent = p.hotelMax === p.hotelMin ? 100 : 50 + ((cost - p.hotelMin) / (p.hotelMax - p.hotelMin)) * 50;
             this.tempHotelGain = Math.round(percent);
-            document.getElementById('gain-hotel').innerText = `+${this.tempHotelGain}% (Отель)`;
-        } else {
-            document.getElementById('out-hotel').innerText = 0;
-            // Если не сняли жилье, спим в машине бесплатно
-            this.tempHotelGain = this.state.car.sleepBonus;
-            document.getElementById('gain-hotel').innerText = `+${this.tempHotelGain}% (В машине)`;
+            document.getElementById('gain-hotel').innerText = `+${this.tempHotelGain}%`;
         }
 
-        // Расчет Еды
+        // Еда (от 50% до 100% сытости)
         this.tempFoodGain = 0;
-        if (document.getElementById('chk-food').checked && p.food > 0) {
+        if (document.getElementById('chk-food').checked) {
             let cost = parseInt(document.getElementById('sl-food').value);
             total += cost;
             document.getElementById('out-food').innerText = cost;
-            let minC = p.food * 0.5;
-            let percent = 50 + ((cost - minC) / (p.food - minC)) * 50;
+            let percent = p.foodMax === p.foodMin ? 100 : 50 + ((cost - p.foodMin) / (p.foodMax - p.foodMin)) * 50;
             this.tempFoodGain = Math.round(percent);
             document.getElementById('gain-food').innerText = `+${this.tempFoodGain}%`;
-        } else {
-            document.getElementById('out-food').innerText = 0;
-            document.getElementById('gain-food').innerText = `+0% (Голод)`;
         }
 
-        // Расчет Бензина и Ремонта
-        if (this.state.car.id !== "bike" && p.gasPerLiter > 0) {
+        // Бензин и Ремонт
+        if (this.state.car.id !== "bike" && p.gas > 0) {
             let gVal = parseInt(document.getElementById('sl-gas').value);
-            let gCost = gVal * p.gasPerLiter;
+            let gCost = gVal * p.gas;
             total += gCost;
             document.getElementById('out-gas').innerText = gCost;
             document.getElementById('gain-gas').innerText = `+${gVal} л.`;
 
             let hpVal = parseInt(document.getElementById('sl-hp').value);
-            let hpCost = hpVal * p.repairPerPercent;
+            let hpCost = hpVal * p.repair;
             total += hpCost;
             document.getElementById('out-hp').innerText = hpCost;
             document.getElementById('gain-hp').innerText = `+${hpVal}%`;
@@ -286,33 +269,61 @@ window.Game = {
 
     payCityBill: function() {
         let bill = parseInt(document.getElementById('total-bill').innerText);
+        if (bill === 0) { this.toast("Вы ничего не выбрали для покупки."); return; }
         if (this.state.coins < bill) { this.toast("Недостаточно монет!"); return; }
 
         this.state.coins -= bill;
 
-        this.state.wake = Math.min(100, this.state.wake + this.tempHotelGain);
-        this.state.food = Math.min(100, this.state.food + this.tempFoodGain);
+        if (document.getElementById('chk-hotel').checked) {
+            this.state.wake = Math.min(100, this.state.wake + this.tempHotelGain);
+            this.state.hasPaidHotel = true;
+        }
+        if (document.getElementById('chk-food').checked) {
+            this.state.food = Math.min(100, this.state.food + this.tempFoodGain);
+        }
         
         if (this.state.car.id !== "bike") {
             this.state.gas += parseInt(document.getElementById('sl-gas').value);
             this.state.hp += parseInt(document.getElementById('sl-hp').value);
         }
 
-        // КОЛЛЕКЦИЯ ГОРОДА (Условие: Куплен Отель И Экскурсия)
-        let hotelChecked = document.getElementById('chk-hotel').checked;
-        let excChecked = document.getElementById('chk-exc').checked;
-        
-        if (hotelChecked && excChecked) {
+        if (document.getElementById('chk-exc').checked) {
+            this.state.hasPaidExc = true;
+        }
+
+        // ПРОВЕРКА НА КАРТОЧКУ ГОРОДА
+        if (this.state.hasPaidHotel && this.state.hasPaidExc) {
             if(!this.state.collected.includes(this.state.currentCity.id)) {
                 this.state.collected.push(this.state.currentCity.id);
-                this.toast("Город полностью изучен! Добавлен в Альбом.");
+                this.toast("Поздравляем! Карточка города добавлена в Альбом!");
                 this.updateMarkers();
             }
         }
 
-        document.getElementById('city-actions').style.display = 'none';
-        document.getElementById('city-fact').innerText = "Город пройден! Выберите следующую точку на карте.";
+        // Сбрасываем ползунки на 0 после оплаты
+        document.getElementById('chk-hotel').checked = false;
+        document.getElementById('chk-food').checked = false;
+        document.getElementById('chk-exc').checked = false;
+        if(document.getElementById('sl-gas')) document.getElementById('sl-gas').value = 0;
+        if(document.getElementById('sl-hp')) document.getElementById('sl-hp').value = 0;
+        this.calcCityBill(Data.prices[this.state.currentCity.tier]);
+        
+        this.toast("Услуги успешно оплачены!");
         this.updateTopUI();
+    },
+
+    // ЛОГИКА ОТЪЕЗДА
+    leaveCity: function() {
+        if (!this.state.hasPaidHotel) {
+            // Спал в машине
+            this.state.wake = Math.min(100, this.state.wake + this.state.car.sleepBonus);
+            this.toast(`Вы переночевали в машине (+${this.state.car.sleepBonus}% бодрости).`);
+        }
+        this.updateTopUI();
+        document.getElementById('city-info').style.display = 'none';
+        document.getElementById('status-text').style.display = 'block';
+        document.getElementById('status-text').innerHTML = `<i class="fa-solid fa-map-location-dot"></i> Выберите следующий город на карте.`;
+        if(window.innerWidth <= 768) document.getElementById('game-panel').classList.remove('open');
     },
 
     updateTopUI: function() {
@@ -340,8 +351,8 @@ window.Game = {
             let b = document.createElement('button'); b.className = 'btn-action'; b.innerText = ans;
             b.onclick = () => {
                 document.getElementById('quest-modal').style.display = 'none';
-                if(i === q.right) { this.state.coins += 150; this.toast("Верно! +150 монет"); } 
-                else { this.toast("Неверно!"); }
+                if(i === q.right) { this.state.coins += 150; this.toast("Верный ответ! +150 монет от спонсоров."); } 
+                else { this.toast("Увы, ответ неверный."); }
                 this.updateTopUI();
                 this.openCityUI(city);
             };
@@ -367,11 +378,12 @@ window.Game = {
     toast: function(msg) {
         let c = document.getElementById('toast-container');
         let t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
-        c.appendChild(t); setTimeout(() => t.remove(), 3000);
+        c.appendChild(t); setTimeout(() => t.remove(), 4000);
     },
 
     bindEvents: function() {
         document.getElementById('btn-pay-city').onclick = () => this.payCityBill();
+        document.getElementById('btn-leave-city').onclick = () => this.leaveCity();
         document.getElementById('btn-album').onclick = () => this.openAlbum();
         const handle = document.querySelector('.mobile-drag-handle');
         if(handle) handle.onclick = () => { if(window.innerWidth<=768) document.getElementById('game-panel').classList.toggle('open'); };
@@ -387,5 +399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('player-avatar').src = user.photo_200;
         }
     } catch (error) { document.getElementById('player-name').innerText = "Игрок"; }
+    
+    document.getElementById('difficulty-modal').style.display = 'flex';
     Game.init();
 });

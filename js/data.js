@@ -1,5 +1,4 @@
 window.Data = {
-    // Гараж 2.0: Характеристики
     garages: {
         normal: [
             { id: "sedan", name: "🚙 Городской Седан", tank: 50, cons: 8, hpLoss: 0.8, sleepBonus: 30 },
@@ -16,11 +15,11 @@ window.Data = {
         ]
     },
 
-    // Реалистичные цены (Максимальная стоимость Отеля и Обеда)
+    // Цены (Min и Max для ползунков)
     prices: {
-        1: { hotel: 800, food: 500, repairPerPercent: 10, gasPerLiter: 55, exc: 300 },
-        2: { hotel: 500, food: 350, repairPerPercent: 7,  gasPerLiter: 53, exc: 150 },
-        3: { hotel: 0,   food: 200, repairPerPercent: 0,  gasPerLiter: 0,  exc: 0 } // Глухомань
+        1: { hotelMin: 400, hotelMax: 800, foodMin: 250, foodMax: 500, repair: 10, gas: 55, exc: 300 },
+        2: { hotelMin: 250, hotelMax: 500, foodMin: 150, foodMax: 350, repair: 7,  gas: 53, exc: 150 },
+        3: { hotelMin: 150, hotelMax: 300, foodMin: 100, foodMax: 200, repair: 5,  gas: 50, exc: 50 } 
     },
 
     cities: [
