@@ -14,7 +14,7 @@ window.Game = {
                 document.getElementById('player-name').innerText = user.first_name;
                 document.getElementById('player-avatar').src = user.photo_200;
             }
-        } catch (e) { console.log("Запущено вне ВК"); }
+        } catch (e) { console.log("Демо-режим"); }
 
         this.map = L.map('map', { zoomControl: false }).setView([55.75, 38.0], 6);
         L.control.zoom({position: 'topright'}).addTo(this.map);
@@ -31,7 +31,7 @@ window.Game = {
         let last = localStorage.getItem('rr_daily');
         let today = new Date().toDateString();
         if (last !== today) {
-            this.state.coins += 1200; // 1000 + 200 ВК бонус
+            this.state.coins += 1200;
             localStorage.setItem('rr_daily', today);
             this.toast("Ежедневный бонус: +1200 монет!");
         }
@@ -51,7 +51,7 @@ window.Game = {
                 document.getElementById('garage-modal').style.display = 'none';
                 document.getElementById('resource-panel').style.display = 'flex';
                 this.updateTopUI();
-                this.toast("Кликните на город на карте (Столицу), чтобы стартовать!");
+                this.toast("Кликните на столицу региона на карте, чтобы стартовать!");
             };
             list.appendChild(div);
         });
@@ -61,10 +61,7 @@ window.Game = {
     renderMap: function() {
         Data.cities.forEach(c => {
             let isHidden = c.tier === 3;
-            let icon = L.divIcon({
-                className: `city-marker ${isHidden ? 'hidden-tier' : ''}`, 
-                iconSize: [16, 16], iconAnchor: [8,8]
-            });
+            let icon = L.divIcon({ className: `city-marker ${isHidden ? 'hidden-tier' : ''}`, iconSize: [16, 16], iconAnchor: [8,8] });
             let m = L.marker(c.coords, {icon: icon}).addTo(this.map);
             this.markers[c.id] = m;
 
@@ -87,14 +84,11 @@ window.Game = {
         let carIcon = L.divIcon({className: 'city-marker current', iconSize: [24, 24], iconAnchor: [12,12]});
         this.carMarker = L.marker(city.coords, {icon: carIcon, zIndexOffset: 1000}).addTo(this.map);
 
-        document.getElementById('status-text').style.display = 'none';
-        document.getElementById('city-info').style.display = 'block';
+        document.getElementById('city-overlay').style.display = 'flex';
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-tier').innerText = `СТАРТОВАЯ ТОЧКА`;
-        document.getElementById('city-fact').innerText = "Бак полон. Вы готовы начать экспедицию.";
-        document.getElementById('city-actions').style.display = 'none'; 
-        
-        if(window.innerWidth <= 768) document.getElementById('game-panel').classList.add('open');
+        document.getElementById('city-fact').innerText = "Бак полон. Жмите 'Ехать дальше' и выбирайте город на карте.";
+        document.getElementById('city-shop').innerHTML = ''; 
     },
 
     confirmTravel: async function(targetCity) {
@@ -109,39 +103,43 @@ window.Game = {
             this.showConfirm(`Едем в ${targetCity.name}?`, `Расстояние: ${Math.round(distKm)} км.`, () => {
                 this.executeTravel(targetCity, distKm, routeCoords);
             });
-        } catch(e) { this.toast("Ошибка навигатора"); }
+        } catch(e) { this.toast("Ошибка сети. Попробуйте другой город."); }
     },
 
-    // ЧЕСТНАЯ АНИМАЦИЯ ПОЕЗДКИ И ТРАТА РЕСУРСОВ
     executeTravel: function(city, distKm, coords) {
-        document.getElementById('city-info').style.display = 'none';
-        document.getElementById('status-text').style.display = 'block';
-        document.getElementById('status-text').innerHTML = `<i class="fa-solid fa-car-side"></i> Едем в ${city.name}...`;
-        if(window.innerWidth <= 768) document.getElementById('game-panel').classList.remove('open');
+        document.getElementById('city-overlay').style.display = 'none';
+        
+        let gameHours = distKm / 100;
+        let realSeconds = (gameHours * 60) / 10; // 1 сек реал = 10 мин игр.
+        let durationMs = realSeconds * 1000; 
+
+        document.getElementById('travel-hud').style.display = 'block';
+        document.getElementById('hud-target').innerText = city.name;
+        document.getElementById('hud-time').innerText = Math.round(gameHours);
 
         let line = L.polyline(coords, {color: '#FF5722', weight: 4}).addTo(this.map);
         this.routeLines.push(line);
         this.state.isMoving = true;
 
-        // Математика (Ресурсы тратятся от дистанции)
-        let totalGasDrain = this.state.car.id !== "bike" ? (this.state.car.cons / 100) * distKm : 0;
-        let totalFoodDrain = this.state.car.id !== "bike" ? (distKm * 0.05) : (distKm * 0.5); // Велик жрет еду
-        let totalWakeDrain = (distKm / 700) * 100;
-        let totalHpDrain = (distKm / 100) * this.state.car.hpLoss;
+        let gasDrain = this.state.car.id !== "bike" ? (this.state.car.cons / 100) * distKm : 0;
+        let foodDrain = gameHours * 4.1; // 100% еды сгорает за 24ч
+        let wakeDrain = (distKm / 700) * 100;
+        let hpDrain = (distKm / 100) * this.state.car.hpLoss;
 
         let steps = coords.length;
+        let intervalMs = 50;
+        let totalIntervals = durationMs / intervalMs;
+        let stepIncrement = steps / totalIntervals;
         let currentStep = 0;
-        let speed = Math.max(1, Math.floor(steps / 60)); 
 
         let moveInterval = setInterval(() => {
-            currentStep += speed;
+            currentStep += stepIncrement;
             if (currentStep >= steps - 1) currentStep = steps - 1;
             
-            let pos = coords[currentStep];
+            let pos = coords[Math.floor(currentStep)];
             this.carMarker.setLatLng(pos);
             if(window.innerWidth > 768) this.map.panTo(pos, {animate: true, duration: 0.1});
 
-            // МЕХАНИКА: ПОИСК СКРЫТЫХ ГОРОДОВ (УРОВЕНЬ 3)
             Data.cities.forEach(c => {
                 if (c.tier === 3 && !this.state.discovered.includes(c.id)) {
                     let distanceMeters = this.map.distance(pos, c.coords);
@@ -154,23 +152,18 @@ window.Game = {
                 }
             });
 
-            if (currentStep === steps - 1) {
+            if (currentStep >= steps - 1) {
                 clearInterval(moveInterval);
+                document.getElementById('travel-hud').style.display = 'none';
                 
-                // Финальное списание ресурсов
-                this.state.gas -= totalGasDrain;
-                this.state.food -= totalFoodDrain;
-                this.state.wake -= totalWakeDrain;
-                this.state.hp -= totalHpDrain;
-
-                if(this.state.gas < 0) this.state.gas = 0;
-                if(this.state.wake < 0) this.state.wake = 0;
-                if(this.state.food < 0) this.state.food = 0;
-                if(this.state.hp < 0) this.state.hp = 0;
+                this.state.gas = Math.max(0, this.state.gas - gasDrain);
+                this.state.food = Math.max(0, this.state.food - foodDrain);
+                this.state.wake = Math.max(0, this.state.wake - wakeDrain);
+                this.state.hp = Math.max(0, this.state.hp - hpDrain);
                 
                 this.finishTravel(city, line);
             }
-        }, 40);
+        }, intervalMs);
     },
 
     finishTravel: function(city, line) {
@@ -178,14 +171,12 @@ window.Game = {
         this.state.currentCity = city;
         this.state.history.push(city.id);
         
-        // Рисуем шлейф истории
         this.routeLines.forEach(l => l.setStyle({color: '#555', weight: 3, dashArray: '5, 10'}));
         line.setStyle({color: '#FF5722', weight: 4, dashArray: null});
 
         this.updateMarkers();
         this.updateTopUI();
         
-        // КВЕСТ СРАЗУ ПО ПРИЕЗДУ
         if(city.quests && city.quests.length > 0) {
             this.showQuest(city);
         } else {
@@ -198,7 +189,6 @@ window.Game = {
             let m = this.markers[id];
             let el = m.getElement();
             if(!el) return;
-            // Сохраняем логику скрытых и найденных городов
             let isHidden = Data.cities.find(c => c.id === id).tier === 3;
             let isDisc = this.state.discovered.includes(id);
             
@@ -210,177 +200,138 @@ window.Game = {
     },
 
     // ====================================================
-    // МЕНЮ ГОРОДА И СВОБОДНАЯ ПОКУПКА
+    // ДИНАМИЧЕСКИЙ МАГАЗИН ГОРОДА
     // ====================================================
     openCityUI: function(city) {
         this.state.hotelPaid = false;
         this.state.excPaid = false;
 
-        document.getElementById('status-text').style.display = 'none';
-        document.getElementById('city-actions').style.display = 'block';
-        document.getElementById('city-info').style.display = 'block';
+        document.getElementById('city-overlay').style.display = 'flex';
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
         document.getElementById('city-fact').innerText = city.fact;
         
+        this.renderCityShop(city);
+    },
+
+    renderCityShop: function(city) {
         const p = Data.prices[city.tier];
-        
-        // НОЧЛЕГ
-        let chkHotel = document.getElementById('chk-hotel');
-        let wrapHotel = document.getElementById('wrap-hotel');
-        let slHotel = document.getElementById('sl-hotel');
-        document.getElementById('car-sleep-val').innerText = this.state.car.sleepBonus;
-        
-        if (p.hotelMax > 0) {
-            chkHotel.disabled = false; chkHotel.checked = false; wrapHotel.style.display = 'none';
-            slHotel.min = p.hotelMin; slHotel.max = p.hotelMax; slHotel.step = 50; slHotel.value = p.hotelMin;
-        } else {
-            chkHotel.disabled = true; chkHotel.checked = false; wrapHotel.style.display = 'none'; // Нет отелей
+        let html = "";
+
+        // 1. НОЧЛЕГ (Выбор)
+        html += `<div class="shop-category"><h4>🛏️ Ночлег</h4><div class="btn-group">`;
+        if (p.hotel > 0) {
+            let isFull = this.state.wake >= 100 || this.state.hotelPaid;
+            html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hotel}, 100)">
+                <b>Отель</b><small>+100% бодрости</small><span class="price">${p.hotel} ₽</span></button>`;
         }
-        chkHotel.onchange = () => { wrapHotel.style.display = chkHotel.checked ? 'block' : 'none'; this.calcCityBill(p); };
-        slHotel.oninput = () => this.calcCityBill(p);
-
-        // ЕДА
-        let chkFood = document.getElementById('chk-food');
-        let wrapFood = document.getElementById('wrap-food');
-        let slFood = document.getElementById('sl-food');
-
-        if (p.foodMax > 0) {
-            chkFood.disabled = false; chkFood.checked = false; wrapFood.style.display = 'none';
-            slFood.min = p.foodMin; slFood.max = p.foodMax; slFood.step = 50; slFood.value = p.foodMin;
-        } else {
-            chkFood.disabled = true; chkFood.checked = false; wrapFood.style.display = 'none';
+        if (p.hostel > 0) {
+            let isFull = this.state.wake >= 100 || this.state.hotelPaid;
+            html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hostel}, 80)">
+                <b>Хостел</b><small>+80% бодрости</small><span class="price">${p.hostel} ₽</span></button>`;
         }
-        chkFood.onchange = () => { wrapFood.style.display = chkFood.checked ? 'block' : 'none'; this.calcCityBill(p); };
-        slFood.oninput = () => this.calcCityBill(p);
+        html += `</div></div>`;
 
-        // БЕНЗИН И РЕМОНТ (Отображаем как ползунки)
-        let wrapGas = document.getElementById('wrap-gas-hp');
-        if (this.state.car.id === "bike" || (p.gas === 0 && p.repair === 0)) {
-            wrapGas.style.display = 'none';
-        } else {
-            wrapGas.style.display = 'block';
-            let maxGas = Math.max(0, Math.floor(this.state.car.tank - this.state.gas));
-            let slGas = document.getElementById('sl-gas');
-            slGas.min = 0; slGas.max = maxGas; slGas.step = 1; slGas.value = 0;
-            
-            let maxHp = Math.max(0, Math.floor(100 - this.state.hp));
-            let slHp = document.getElementById('sl-hp');
-            slHp.min = 0; slHp.max = maxHp; slHp.step = 1; slHp.value = 0;
-
-            slGas.oninput = () => this.calcCityBill(p);
-            slHp.oninput = () => this.calcCityBill(p);
+        // 2. ЕДА (Выбор)
+        html += `<div class="shop-category"><h4>🍔 Питание</h4><div class="btn-group">`;
+        if (p.rest > 0) {
+            let isFull = this.state.food >= 100;
+            html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.rest}, 100)">
+                <b>Ресторан</b><small>+100% сытости</small><span class="price">${p.rest} ₽</span></button>`;
         }
-
-        // ЭКСКУРСИЯ
-        document.getElementById('price-exc').innerText = p.exc;
-        document.getElementById('chk-exc').checked = false;
-        document.getElementById('chk-exc').onchange = () => this.calcCityBill(p);
-
-        this.calcCityBill(p);
-        if(window.innerWidth <= 768) document.getElementById('game-panel').classList.add('open');
-    },
-
-    calcCityBill: function(p) {
-        let total = 0;
-
-        // Отель (от 50% до 100%)
-        this.tempHotelGain = 0;
-        if (document.getElementById('chk-hotel').checked && p.hotelMax > 0) {
-            let cost = parseInt(document.getElementById('sl-hotel').value);
-            total += cost;
-            document.getElementById('out-hotel').innerText = cost;
-            let percent = p.hotelMax === p.hotelMin ? 100 : 50 + ((cost - p.hotelMin) / (p.hotelMax - p.hotelMin)) * 50;
-            this.tempHotelGain = Math.round(percent);
-            document.getElementById('gain-hotel').innerText = `+${this.tempHotelGain}%`;
+        if (p.fastfood > 0) {
+            let isFull = this.state.food >= 100;
+            html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.fastfood}, 80)">
+                <b>Фастфуд</b><small>+80% сытости</small><span class="price">${p.fastfood} ₽</span></button>`;
         }
+        html += `</div></div>`;
 
-        // Еда
-        this.tempFoodGain = 0;
-        if (document.getElementById('chk-food').checked && p.foodMax > 0) {
-            let cost = parseInt(document.getElementById('sl-food').value);
-            total += cost;
-            document.getElementById('out-food').innerText = cost;
-            let percent = p.foodMax === p.foodMin ? 100 : 50 + ((cost - p.foodMin) / (p.foodMax - p.foodMin)) * 50;
-            this.tempFoodGain = Math.round(percent);
-            document.getElementById('gain-food').innerText = `+${this.tempFoodGain}%`;
-        }
-
+        // 3. БЕНЗИН (Динамический)
         if (this.state.car.id !== "bike" && p.gas > 0) {
-            let gVal = parseInt(document.getElementById('sl-gas').value);
-            let gCost = gVal * p.gas;
-            total += gCost;
-            document.getElementById('out-gas').innerText = gCost;
-            document.getElementById('gain-gas').innerText = `+${gVal} л.`;
-
-            let hpVal = parseInt(document.getElementById('sl-hp').value);
-            let hpCost = hpVal * p.repair;
-            total += hpCost;
-            document.getElementById('out-hp').innerText = hpCost;
-            document.getElementById('gain-hp').innerText = `+${hpVal}%`;
+            let missingGas = Math.floor(this.state.car.tank - this.state.gas);
+            let fullPrice = missingGas * p.gas;
+            let tenPrice = 10 * p.gas;
+            html += `<div class="shop-category"><h4>⛽ АЗС (${p.gas} ₽/литр)</h4><div class="btn-group">`;
+            html += `<button class="btn-shop" ${missingGas < 10 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${tenPrice}, 10)">
+                <b>+10 Литров</b><span class="price">${tenPrice} ₽</span></button>`;
+            html += `<button class="btn-shop" ${missingGas <= 0 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${fullPrice}, ${missingGas})">
+                <b>Полный бак</b><span class="price">${fullPrice} ₽</span></button>`;
+            html += `</div></div>`;
         }
 
-        if(document.getElementById('chk-exc').checked) total += p.exc;
+        // 4. СТО (Динамический)
+        if (this.state.car.id !== "bike" && p.repair > 0) {
+            let missingHp = Math.floor(100 - this.state.hp);
+            let fullPrice = missingHp * p.repair;
+            let tenPrice = 10 * p.repair;
+            html += `<div class="shop-category"><h4>🔧 Автосервис</h4><div class="btn-group">`;
+            html += `<button class="btn-shop" ${missingHp < 10 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${tenPrice}, 10)">
+                <b>+10% Ремонта</b><span class="price">${tenPrice} ₽</span></button>`;
+            html += `<button class="btn-shop" ${missingHp <= 0 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${fullPrice}, ${missingHp})">
+                <b>Починить всё</b><span class="price">${fullPrice} ₽</span></button>`;
+            html += `</div></div>`;
+        }
 
-        document.getElementById('total-bill').innerText = total;
+        // 5. ЭКСКУРСИЯ
+        if (p.exc > 0) {
+            html += `<div class="shop-category"><h4>🎫 Культура</h4><div class="btn-group">`;
+            html += `<button class="btn-shop ${this.state.excPaid ? 'purchased' : ''}" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.buyItem('exc', ${p.exc}, 0)">
+                <b>Экскурсия</b><small>Нужно для коллекции</small><span class="price">${p.exc} ₽</span></button>`;
+            html += `</div></div>`;
+        }
+
+        document.getElementById('city-shop').innerHTML = html;
     },
 
-    payCityBill: function() {
-        let bill = parseInt(document.getElementById('total-bill').innerText);
-        if (bill === 0) { this.toast("Вы ничего не выбрали для покупки."); return; }
-        if (this.state.coins < bill) { this.toast("Недостаточно монет! Пройдите опросы или посмотрите рекламу."); return; }
-
-        this.state.coins -= bill;
-
-        if (document.getElementById('chk-hotel').checked) {
-            this.state.wake = Math.min(100, this.state.wake + this.tempHotelGain);
-            this.state.hotelPaid = true;
-        }
-        if (document.getElementById('chk-food').checked) {
-            this.state.food = Math.min(100, this.state.food + this.tempFoodGain);
+    buyItem: function(type, price, amount) {
+        if (this.state.coins < price) {
+            this.toast("Не хватает монет!");
+            return;
         }
         
-        if (this.state.car.id !== "bike") {
-            this.state.gas += parseInt(document.getElementById('sl-gas').value);
-            this.state.hp += Math.min(100, this.state.hp + parseInt(document.getElementById('sl-hp').value));
+        this.state.coins -= price;
+
+        if (type === 'hotel') {
+            this.state.wake = Math.min(100, this.state.wake + amount);
+            this.state.hotelPaid = true;
+            this.toast("Вы отлично отдохнули!");
+        } else if (type === 'food') {
+            this.state.food = Math.min(100, this.state.food + amount);
+            this.toast("Сытость пополнена!");
+        } else if (type === 'gas') {
+            this.state.gas += amount;
+            this.toast("Машина заправлена!");
+        } else if (type === 'hp') {
+            this.state.hp += amount;
+            this.toast("Ремонт выполнен!");
+        } else if (type === 'exc') {
+            this.state.excPaid = true;
+            this.toast("Вы посетили экскурсию!");
         }
 
-        if (document.getElementById('chk-exc').checked) this.state.excPaid = true;
-
-        // ПРОВЕРКА НА КАРТОЧКУ ГОРОДА
-        if (this.state.hotelPaid && this.state.excPaid) {
-            if(!this.state.collected.includes(this.state.currentCity.id)) {
-                this.state.collected.push(this.state.currentCity.id);
-                this.toast("Город пройден! Карточка добавлена в Альбом.");
-                this.updateMarkers();
-            }
-        } else {
-            this.toast("Услуги оплачены!");
-        }
-
-        // Обнуляем интерфейс
-        document.getElementById('chk-hotel').checked = false;
-        document.getElementById('chk-food').checked = false;
-        document.getElementById('chk-exc').checked = false;
-        if(document.getElementById('sl-gas')) document.getElementById('sl-gas').value = 0;
-        if(document.getElementById('sl-hp')) document.getElementById('sl-hp').value = 0;
-        this.calcCityBill(Data.prices[this.state.currentCity.tier]);
         this.updateTopUI();
+        
+        // Проверка на добавление в Альбом
+        if (this.state.hotelPaid && this.state.excPaid && !this.state.collected.includes(this.state.currentCity.id)) {
+            this.state.collected.push(this.state.currentCity.id);
+            this.toast("Условия выполнены! Карточка города добавлена в Альбом!");
+            this.updateMarkers();
+        }
+
+        // Перерисовываем магазин, чтобы обновить кнопки и цены
+        this.renderCityShop(this.state.currentCity);
     },
 
-    // ЛОГИКА ОТЪЕЗДА
     leaveCity: function() {
-        if (!this.state.hotelPaid) {
-            // Если не снимали жилье - спим в машине бесплатно
+        if (!this.state.hotelPaid && this.state.currentCity.tier !== 3) {
+            // Спали в машине
             this.state.wake = Math.min(100, this.state.wake + this.state.car.sleepBonus);
             this.toast(`Ночевка в машине (+${this.state.car.sleepBonus}% бодрости).`);
         }
         
         this.updateTopUI();
-        document.getElementById('city-info').style.display = 'none';
-        document.getElementById('status-text').style.display = 'block';
-        document.getElementById('status-text').innerHTML = `<i class="fa-solid fa-map-location-dot"></i> Выберите следующий город на карте.`;
-        if(window.innerWidth <= 768) document.getElementById('game-panel').classList.remove('open');
+        document.getElementById('city-overlay').style.display = 'none';
+        this.toast("Выберите следующий город на карте!");
     },
 
     updateTopUI: function() {
@@ -413,7 +364,7 @@ window.Game = {
                     this.state.coins += reward; 
                     this.toast(`Верно! Вы заработали ${reward} монет.`); 
                 } else { 
-                    this.toast("Неверный ответ! Вы ничего не заработали."); 
+                    this.toast("Неверно! Опыта нет."); 
                 }
                 this.updateTopUI();
                 this.openCityUI(city);
@@ -443,11 +394,8 @@ window.Game = {
     },
 
     bindEvents: function() {
-        document.getElementById('btn-pay-city').onclick = () => this.payCityBill();
         document.getElementById('btn-leave-city').onclick = () => this.leaveCity();
         document.getElementById('btn-album').onclick = () => this.openAlbum();
-        const handle = document.querySelector('.mobile-drag-handle');
-        if(handle) handle.onclick = () => { if(window.innerWidth<=768) document.getElementById('game-panel').classList.toggle('open'); };
     }
 };
 

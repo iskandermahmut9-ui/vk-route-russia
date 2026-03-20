@@ -16,8 +16,8 @@
 
 <header class="header">
     <div class="header-left">
-        <div class="logo">МАРШРУТЫ: РОССИЯ 🚙</div>
-        <button id="btn-album" class="btn-icon" title="Мой Альбом"><i class="fa-solid fa-images"></i> Альбом</button>
+        <div class="logo">МАРШРУТЫ 🚙</div>
+        <button id="btn-album" class="btn-icon" title="Альбом"><i class="fa-solid fa-images"></i> Альбом</button>
     </div>
     
     <div class="header-center" id="resource-panel" style="display: none;">
@@ -37,73 +37,27 @@
 </header>
 
 <div class="main-container">
-    <div class="sidebar" id="game-panel">
-        <div class="mobile-drag-handle"></div>
+    <div id="map"></div>
 
-        <div id="status-text" class="status-panel">
-            <i class="fa-solid fa-map-location-dot"></i> Загрузка карты...
-        </div>
-
-        <div id="city-info" style="display: none;">
+    <div id="city-overlay" class="city-overlay" style="display: none;">
+        <div class="city-panel">
             <h2 id="city-name" class="city-title">Город</h2>
             <span id="city-tier" class="tier-badge">Уровень</span>
             <p id="city-fact" class="city-fact"></p>
             
-            <div id="city-actions" class="cost-box">
-                <h3 class="box-title">Городская Инфраструктура</h3>
-                
-                <div class="service-block">
-                    <label class="cb-label"><input type="checkbox" id="chk-hotel"> 🛏️ Снять номер (Ночлег)</label>
-                    <p class="hint-text">Без оплаты вы спите в машине (+<span id="car-sleep-val">0</span>% бодрости бесплатно).</p>
-                    <div id="wrap-hotel" class="slider-wrap">
-                        <div class="slider-header">
-                            <span>Цена: <span id="out-hotel" class="val-text">0</span> ₽</span>
-                            <span id="gain-hotel" class="gain-text">+0%</span>
-                        </div>
-                        <input type="range" id="sl-hotel" class="styled-slider">
-                    </div>
-                </div>
-
-                <div class="service-block">
-                    <label class="cb-label"><input type="checkbox" id="chk-food"> 🍔 Поесть в заведении</label>
-                    <div id="wrap-food" class="slider-wrap">
-                        <div class="slider-header">
-                            <span>Цена: <span id="out-food" class="val-text">0</span> ₽</span>
-                            <span id="gain-food" class="gain-text">+0%</span>
-                        </div>
-                        <input type="range" id="sl-food" class="styled-slider">
-                    </div>
-                </div>
-
-                <div id="wrap-gas-hp" class="service-block border-top">
-                    <div class="slider-header">
-                        <span>⛽ АЗС: <span id="out-gas" class="val-text">0</span> ₽</span>
-                        <span id="gain-gas" class="gain-text">+0 л.</span>
-                    </div>
-                    <input type="range" id="sl-gas" class="styled-slider">
-
-                    <div class="slider-header" style="margin-top: 15px;">
-                        <span>🔧 СТО: <span id="out-hp" class="val-text">0</span> ₽</span>
-                        <span id="gain-hp" class="gain-text">+0%</span>
-                    </div>
-                    <input type="range" id="sl-hp" class="styled-slider">
-                </div>
-
-                <div class="service-block border-top">
-                    <label class="cb-label"><input type="checkbox" id="chk-exc"> 🎫 Экскурсия (<span id="price-exc">0</span> ₽)</label>
-                    <p class="hint-text alert-text">*Ночлег и Экскурсия обязательны для получения Карточки Города!</p>
-                </div>
-
-                <div class="total-block">ИТОГО: <span id="total-bill">0</span> ₽</div>
-                <button class="btn-action btn-pay" id="btn-pay-city">ОПЛАТИТЬ УСЛУГИ</button>
+            <div id="city-shop" class="city-shop"></div>
+            
+            <div class="city-footer">
+                <button class="btn-action btn-ad" id="btn-city-ad"><i class="fa-solid fa-play"></i> РЕКЛАМА (+500 <i class="fa-solid fa-coins"></i>)</button>
+                <button class="btn-action btn-leave" id="btn-leave-city">ЕХАТЬ ДАЛЬШЕ <i class="fa-solid fa-arrow-right"></i></button>
             </div>
-            
-            <button class="btn-action btn-leave" id="btn-leave-city">ЕХАТЬ ДАЛЬШЕ</button>
-            
         </div>
     </div>
-    
-    <div id="map"></div>
+
+    <div id="travel-hud" class="travel-hud" style="display: none;">
+        <div class="hud-title"><i class="fa-solid fa-car-side"></i> Едем в <span id="hud-target"></span>...</div>
+        <div class="hud-stats">В пути: <span id="hud-time"></span> ч.</div>
+    </div>
 </div>
 
 <div id="custom-modal" class="modal-overlay">
@@ -119,16 +73,16 @@
 
 <div id="difficulty-modal" class="modal-overlay" style="display:flex;">
     <div class="modal-box" style="max-width: 700px;">
-        <div class="modal-head">ВЫБЕРИТЕ СЛОЖНОСТЬ</div>
+        <div class="modal-head">ВЫБОР ЭКСПЕДИЦИИ</div>
         <div class="grid-3">
             <div class="diff-card" onclick="Game.selectDifficulty('normal')">
-                <h3>Обычная</h3><p>Современные авто. Редкие поломки, нормальный расход.</p>
+                <h3>Обычная</h3><p>Современные авто. Редкие поломки.</p>
             </div>
             <div class="diff-card" onclick="Game.selectDifficulty('hard')">
-                <h3 style="color:#FF9800;">Сложная</h3><p>Классика (УАЗ, Нива). Частые поломки, большой расход.</p>
+                <h3 style="color:#FF9800;">Сложная</h3><p>Классика (УАЗ, Нива). Большой расход.</p>
             </div>
             <div class="diff-card" onclick="Game.selectDifficulty('ultra')">
-                <h3 style="color:#F44336;">Хардкор</h3><p>Велосипед. Нет бензина, но еда улетает мгновенно.</p>
+                <h3 style="color:#F44336;">Хардкор</h3><p>Велосипед. Нет бензина, постоянный голод.</p>
             </div>
         </div>
     </div>
@@ -152,7 +106,7 @@
 <div id="album-modal" class="modal-overlay">
     <div class="modal-box" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
         <div class="modal-head">АЛЬБОМ ДОСТИЖЕНИЙ</div>
-        <p style="font-size: 12px; color:#aaa; margin-bottom: 20px;">Зачет дается только за оплаченный Ночлег + Экскурсию.</p>
+        <p style="font-size: 12px; color:#aaa; margin-bottom: 20px;">Город засчитывается, если вы купили Ночлег и Экскурсию.</p>
         <div id="album-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;"></div>
         <button class="btn-action btn-leave" onclick="document.getElementById('album-modal').style.display='none'" style="margin-top:20px;">ЗАКРЫТЬ</button>
     </div>

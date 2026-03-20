@@ -1,59 +1,47 @@
-:root { 
-    --bg-dark: #141414; --header-bg: #1a1a1a; --accent: #FF5722; 
-    --text-white: #ffffff; --text-dim: #cccccc; --modal-bg: #222222; 
-    --header-h: 70px; --sidebar-w: 420px; 
-}
-
+:root { --bg-dark: #121212; --header-bg: #1c1c1c; --accent: #FF5722; --text-white: #ffffff; --text-dim: #cccccc; --modal-bg: #242424; --header-h: 70px; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display: flex; flex-direction: column; background-color: var(--bg-dark); color: var(--text-white); overflow: hidden; }
-
 .leaflet-control-attribution { display: none !important; }
 
 /* Шапка */
-.header { background: var(--header-bg); height: var(--header-h); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255, 0.05); z-index: 1000; flex-shrink: 0; }
-.logo { font-family: 'Russo One', sans-serif; color: var(--accent); font-size: 20px; margin-right: 15px; }
+.header { background: var(--header-bg); height: var(--header-h); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255, 0.05); z-index: 1000; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+.logo { font-family: 'Russo One', sans-serif; color: var(--accent); font-size: 22px; margin-right: 15px; }
 .btn-icon { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; font-family: 'Montserrat', sans-serif; }
 .btn-icon:hover { background: var(--accent); }
-.header-center { display: flex; gap: 15px; font-weight: 800; font-size: 14px; background: rgba(0,0,0,0.4); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
-.res-item { display: flex; align-items: center; gap: 8px; }
-.header-right { display: flex; align-items: center; }
-.player-profile { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; }
+.header-center { display: flex; gap: 20px; font-weight: 800; font-size: 15px; background: rgba(0,0,0,0.5); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+.res-item { display: flex; align-items: center; gap: 8px; text-shadow: 1px 1px 2px #000; }
+.player-profile { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; }
 .player-profile img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; }
 
 /* Лэйаут */
 .main-container { display: flex; flex: 1; position: relative; height: calc(100vh - var(--header-h)); }
-.sidebar { width: var(--sidebar-w); background: rgba(26, 26, 26, 0.98); border-right: 1px solid #333; height: 100%; padding: 25px; overflow-y: auto; z-index: 10; transition: transform 0.3s ease; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
-.sidebar::-webkit-scrollbar { width: 6px; }
-.sidebar::-webkit-scrollbar-track { background: transparent; }
-.sidebar::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
-#map { flex: 1; height: 100%; background: #e5e3df; }
-.mobile-drag-handle { display: none; }
+#map { flex: 1; height: 100%; background: #e5e3df; z-index: 1; }
 
-/* Интерфейс Города */
+/* Игровой Хаб Города */
+.city-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 500; display: flex; justify-content: flex-start; align-items: flex-start; padding: 20px; pointer-events: auto; }
+.city-panel { background: rgba(28, 28, 28, 0.95); width: 450px; max-height: 100%; border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); border: 1px solid #444; overflow-y: auto; backdrop-filter: blur(10px); }
+.city-panel::-webkit-scrollbar { width: 6px; }
+.city-panel::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+
 .city-title { margin: 0 0 5px 0; color: var(--accent); font-family: 'Russo One', sans-serif; font-size: 32px; letter-spacing: 1px; }
-.status-panel { background: rgba(255, 87, 34, 0.1); border-left: 4px solid var(--accent); padding: 15px; border-radius: 6px; font-size: 14px; line-height: 1.5; margin-bottom: 20px; font-weight: 600; }
-.tier-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 900; background: #e74c3c; text-transform: uppercase; margin-bottom: 15px; letter-spacing: 0.5px; }
-.city-fact { font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-bottom: 25px; }
+.tier-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 900; background: #e74c3c; text-transform: uppercase; margin-bottom: 15px; }
+.city-fact { font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
 
-/* Блок Услуг (Магазин) */
-.cost-box { background: rgba(0,0,0,0.3); border: 1px solid #333; padding: 20px; border-radius: 12px; margin-bottom: 15px; }
-.box-title { margin-top: 0; color: var(--accent); font-size: 16px; text-transform: uppercase; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
-.service-block { margin-bottom: 18px; }
-.border-top { border-top: 1px dashed #444; padding-top: 15px; margin-top: 20px; }
-.cb-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 15px; font-weight: bold; }
-.cb-label input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
-.slider-wrap { display: none; margin-top: 12px; padding-left: 28px; }
-.slider-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
-.val-text { color: #fff; font-size: 14px; }
-.gain-text { color: #4CAF50; font-weight: 900; }
-.hint-text { font-size: 11px; color: #888; margin: 5px 0 0 28px; }
-.alert-text { color: #FFC107; font-weight: bold; }
+/* Стили кнопок магазина */
+.shop-category { margin-bottom: 20px; border-bottom: 1px dashed #444; padding-bottom: 15px; }
+.shop-category h4 { margin: 0 0 10px 0; color: #FF9800; font-size: 14px; text-transform: uppercase; }
+.btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-shop { flex: 1; background: #2a2a2a; border: 2px solid #444; color: #fff; padding: 12px 10px; border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; font-family: 'Montserrat', sans-serif; min-width: 130px; }
+.btn-shop:hover:not(:disabled) { background: #333; border-color: var(--accent); transform: translateY(-2px); }
+.btn-shop:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); background: #1a1a1a; }
+.btn-shop b { display: block; font-size: 15px; margin-bottom: 5px; }
+.btn-shop small { display: block; color: #8BC34A; font-size: 11px; font-weight: bold; margin-bottom: 5px; }
+.btn-shop .price { color: #FFD700; font-weight: 900; font-size: 14px; }
+.btn-shop.purchased { border-color: #4CAF50; background: rgba(76, 175, 80, 0.1); color: #4CAF50; }
 
-.styled-slider { width: 100%; accent-color: var(--accent); height: 6px; background: #444; border-radius: 3px; outline: none; cursor: pointer; }
-.total-block { margin-top: 25px; text-align: right; font-size: 20px; font-weight: 900; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 8px; }
-#total-bill { color: var(--accent); }
+.city-footer { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 
-/* Кнопки */
+/* Основные кнопки */
 .btn-action { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; transition: 0.2s; font-family: 'Montserrat', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
 .btn-action:hover { background: #e64a19; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 87, 34, 0.4); }
 .btn-action:active { transform: translateY(0); }
@@ -61,6 +49,11 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .btn-leave:hover { background: #555; box-shadow: 0 5px 15px rgba(0,0,0,0.4); }
 .btn-ad { background: #2e7d32; }
 .btn-ad:hover { background: #1b5e20; }
+
+/* HUD в пути */
+.travel-hud { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 15px 30px; border-radius: 30px; border: 2px solid var(--accent); z-index: 400; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.7); backdrop-filter: blur(5px); }
+.hud-title { font-size: 18px; font-weight: 900; color: #fff; margin-bottom: 5px; }
+.hud-stats { font-size: 12px; color: #aaa; }
 
 /* Модалки */
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
@@ -79,11 +72,11 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .album-card i { font-size: 35px; margin-bottom: 12px; color: #444; }
 .album-card.collected i { color: #FFD700; }
 
-/* Маркеры Карты */
+/* Маркеры */
 .city-marker { background: #2196F3; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.6); cursor: pointer; transition: 0.3s; }
 .city-marker.collected { background: #FFD700; border-color: #000; }
-.city-marker.hidden-tier { opacity: 0; pointer-events: none; } /* Скрытые города 3 уровня */
-.city-marker.discovered { opacity: 1; pointer-events: auto; background: #9C27B0; } /* Найденные секреты */
+.city-marker.hidden-tier { opacity: 0; pointer-events: none; } 
+.city-marker.discovered { opacity: 1; pointer-events: auto; background: #9C27B0; } 
 .city-marker.current { background: #FF5722; width: 24px !important; height: 24px !important; margin-left: -12px !important; margin-top: -12px !important; z-index: 1000 !important; border: 3px solid #fff; }
 
 /* Тосты */
@@ -92,19 +85,19 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 @keyframes fadein { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeout { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
 
-/* Мобильная адаптация */
+/* МОБИЛЬНАЯ АДАПТАЦИЯ */
 @media screen and (max-width: 900px) {
-    :root { --header-h: 60px; }
-    .header { padding: 0 15px; } .logo { font-size: 16px; margin: 0; }
-    .header-center { display: none !important; } 
-    .player-profile span { display: none; }
-    .btn-icon { padding: 8px 10px; font-size: 11px; }
-    .main-container { flex-direction: column-reverse; }
+    :root { --header-h: auto; }
+    .header { flex-direction: column; padding: 10px; gap: 10px; }
+    .header-left { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+    .header-right { display: none; }
     
-    .sidebar { position: absolute; bottom: 0; left: 0; width: 100%; height: auto; max-height: 85vh; border-radius: 20px 20px 0 0; border-right: none; border-top: 1px solid #444; transform: translateY(calc(100% - 40px)); padding: 15px 20px 80px 20px; box-shadow: 0 -10px 40px rgba(0,0,0,0.7); }
-    .sidebar.open { transform: translateY(0); }
-    .mobile-drag-handle { display: block; width: 50px; height: 5px; background: #666; margin: 0 auto 20px auto; border-radius: 3px; cursor: pointer; }
+    /* Ресурсы всегда видны на мобилках! */
+    .header-center { display: flex !important; width: 100%; justify-content: center; flex-wrap: wrap; gap: 12px; padding: 10px; font-size: 14px; }
     
-    .grid-3 { grid-template-columns: 1fr; gap: 10px; max-height: 60vh; overflow-y: auto; padding-right: 5px; }
-    .leaflet-bottom.leaflet-right { bottom: 50px !important; }
+    .city-overlay { padding: 0; background: rgba(0,0,0,0.8); }
+    .city-panel { width: 100%; height: 100%; border-radius: 0; border: none; padding: 20px 15px 80px 15px; }
+    
+    .grid-3 { grid-template-columns: 1fr; max-height: 60vh; overflow-y: auto; padding-right: 5px; }
+    .leaflet-bottom.leaflet-right { bottom: 20px !important; }
 }
