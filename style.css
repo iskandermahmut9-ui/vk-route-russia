@@ -1,0 +1,73 @@
+:root {
+    --bg-dark: #141414; 
+    --header-bg: #181818; 
+    --accent: #FF5722; 
+    --text-white: #ffffff;
+    --text-dim: #cccccc;
+    --modal-bg: #1e1e1e;
+    --header-h: 70px; 
+}
+
+body { 
+    margin: 0; font-family: 'Montserrat', sans-serif; 
+    height: 100vh; display: flex; flex-direction: column; 
+    background-color: var(--bg-dark); color: var(--text-white); overflow: hidden;
+}
+
+/* Шапка и Ресурсы */
+.header {
+    background: var(--header-bg); height: var(--header-h);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 30px; border-bottom: 1px solid rgba(255,255,255, 0.05); z-index: 1000;
+}
+.logo { font-family: 'Russo One', sans-serif; color: var(--accent); font-size: 18px; }
+
+.header-center { display: flex; gap: 20px; font-weight: 800; font-size: 14px; background: rgba(0,0,0,0.3); padding: 8px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); }
+.res-item { display: flex; align-items: center; gap: 8px; }
+
+.player-profile { display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 700; }
+.player-profile img { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; }
+
+/* Лэйаут */
+.main-container { display: flex; flex: 1; position: relative; }
+.sidebar { width: 380px; background: rgba(20, 20, 20, 0.98); border-right: 1px solid #333; height: 100%; padding: 25px; box-sizing: border-box; overflow-y: auto; z-index: 10; }
+#map { flex: 1; height: 100%; background: #222; }
+
+/* Интерфейс Города */
+.status-panel { background: rgba(255, 87, 34, 0.1); border-left: 4px solid var(--accent); padding: 15px; border-radius: 6px; font-size: 13px; line-height: 1.5; }
+.tier-badge { display: inline-block; padding: 5px 12px; border-radius: 6px; font-size: 10px; font-weight: 900; background: #e74c3c; text-transform: uppercase; letter-spacing: 1px; }
+.cost-box { background: rgba(0,0,0,0.3); border: 1px solid #333; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+.cost-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; font-weight: 600;}
+.cost-val { color: var(--accent); font-weight: 800; }
+
+/* Кнопки */
+.btn-action { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; transition: 0.2s; font-family: 'Montserrat', sans-serif; text-transform: uppercase; }
+.btn-action:hover { background: #e64a19; transform: translateY(-2px); }
+.btn-action:active { transform: translateY(0); }
+.btn-ad { background: #2e7d32; }
+.btn-ad:hover { background: #1b5e20; }
+
+/* Модальные окна */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px); }
+.modal-box { background: var(--modal-bg); padding: 30px; border-radius: 20px; border: 1px solid #333; width: 100%; max-width: 420px; text-align: center; color: var(--text-white); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+.modal-head { font-weight: 900; font-size: 22px; margin-bottom: 15px; font-family: 'Russo One', sans-serif; text-transform: uppercase; }
+
+/* Карточки гаража */
+.car-card { background: #252525; border: 2px solid #333; border-radius: 12px; padding: 15px; cursor: pointer; transition: 0.2s; text-align: center; }
+.car-card:hover { border-color: var(--accent); background: rgba(255, 87, 34, 0.1); }
+.car-card h4 { margin: 0 0 10px 0; color: var(--accent); font-weight: 800; font-size: 14px;}
+.car-card p { font-size: 11px; margin: 5px 0; color: #aaa; }
+
+/* Тосты */
+.toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.toast { background: var(--accent); color: #fff; padding: 12px 20px; border-radius: 8px; font-weight: 800; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); animation: fadein 0.3s, fadeout 0.3s 2.7s; text-align: center; }
+@keyframes fadein { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeout { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
+
+/* VK Темы */
+body.vk-light { --bg-dark: #f0f2f5; --header-bg: #ffffff; --modal-bg: #ffffff; --text-white: #000000; --text-dim: #666666; color: #000; }
+body.vk-light .sidebar { background: #ffffff; border-color: #ddd; }
+body.vk-light .modal-box { border-color: #ddd; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+body.vk-light .cost-box { background: #f9f9f9; border-color: #eee; }
+body.vk-light .header-center { background: #f5f5f5; border-color: #ddd; color: #333;}
+body.vk-light .car-card { background: #f9f9f9; border-color: #ddd; }
