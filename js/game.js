@@ -6,9 +6,7 @@ window.Game = {
         currentCity: null, history: [], collected: []
     },
 
-    // --- 1. ИНИЦИАЛИЗАЦИЯ И СТАРТ ---
     init: function() {
-        // Карта (Красивая OSM с названиями)
         this.map = L.map('map', { zoomControl: false }).setView([55.75, 38.0], 6);
         L.control.zoom({position: 'topright'}).addTo(this.map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(this.map);
@@ -22,9 +20,8 @@ window.Game = {
         let last = localStorage.getItem('route_last_login');
         let today = new Date().toDateString();
         if (last !== today) {
-            this.state.coins += 1000; // Базовый бонус
-            // Имитация проверки подписки на группу ВК (В реальности тут вызов vkBridge API)
-            this.state.coins += 200; 
+            this.state.coins += 1000;
+            this.state.coins += 200; // Бонус за группу ВК
             localStorage.setItem('route_last_login', today);
             this.toast("Ежедневный бонус: +1200 монет (с учетом ВК)!");
         }
@@ -35,7 +32,6 @@ window.Game = {
         this.state.diff = diff;
         document.getElementById('difficulty-modal').style.display = 'none';
         
-        // Рендерим нужный гараж
         const list = document.getElementById('garage-list'); list.innerHTML = '';
         Data.garages[diff].forEach(car => {
             let div = document.createElement('div'); div.className = 'car-card';
@@ -59,7 +55,6 @@ window.Game = {
         this.toast("Кликните на город, с которого начнется путешествие!");
     },
 
-    // --- 2. ЛОГИКА КАРТЫ И ПОЕЗДОК ---
     renderMap: function() {
         Data.cities.forEach(c => {
             let icon = L.divIcon({className: 'city-marker', iconSize: [16, 16], iconAnchor: [8,8]});
@@ -86,7 +81,9 @@ window.Game = {
         document.getElementById('city-info').style.display = 'block';
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-fact').innerText = "Счастливого пути! Ваши ресурсы полны.";
-        document.getElementById('city-actions').style.display = 'none'; // На старте не платим
+        
+        // ВАЖНО: Прячем ползунки трат в стартовом городе!
+        document.getElementById('city-actions').style.display = 'none'; 
         
         if(window.innerWidth <= 768) document.getElementById('game-panel').classList.add('open');
     },
@@ -97,7 +94,7 @@ window.Game = {
         
         try {
             const res = await fetch(url); const data = await res.json();
-            const dist = data.routes[0].distance / 1000; // КМ
+            const dist = data.routes[0].distance / 1000;
             const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
 
             this.showConfirm(`Едем в ${targetCity.name}?`, `Расстояние: ${Math.round(dist)} км. Убедитесь, что хватит бензина.`, () => {
@@ -107,15 +104,13 @@ window.Game = {
     },
 
     executeTravel: function(city, distKm, coords) {
-        // 1. Рисуем оранжевую линию
         let line = L.polyline(coords, {color: '#FF5722', weight: 4}).addTo(this.map);
         this.routeLines.push(line);
 
-        // 2. Математика трат (Никаких денег, только ресурсы!)
         if (this.state.car.id !== "bike") {
             this.state.gas -= (this.state.car.cons / 100) * distKm;
         } else {
-            this.state.food -= (distKm * 0.5); // Велик жрет еду
+            this.state.food -= (distKm * 0.5);
         }
         this.state.wake -= (distKm / 700) * 100;
         this.state.food -= (distKm * 0.05);
@@ -128,17 +123,14 @@ window.Game = {
 
         this.updateTopUI();
 
-        // 3. Приезд
         this.state.currentCity = city;
         this.state.history.push(city.id);
         this.updateMarkers();
         this.map.panTo(city.coords);
         
-        // Превращаем старые линии в серый шлейф
         this.routeLines.forEach(l => l.setStyle({color: '#888', weight: 2}));
-        line.setStyle({color: '#FF5722', weight: 4}); // Текущая остается оранжевой
+        line.setStyle({color: '#FF5722', weight: 4});
 
-        // 4. Квест перед въездом (если есть)
         if(city.quests && city.quests.length > 0) {
             this.showQuest(city);
         } else {
@@ -157,15 +149,14 @@ window.Game = {
         });
     },
 
-    // --- 3. ИНТЕРФЕЙС ГОРОДА И ПРОПОРЦИОНАЛЬНЫЕ ТРАТЫ ---
     openCityUI: function(city) {
         document.getElementById('status-text').style.display = 'none';
-        document.getElementById('city-actions').style.display = 'block';
+        document.getElementById('city-actions').style.display = 'block'; // Показываем ползунки
         document.getElementById('city-info').style.display = 'block';
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
+        document.getElementById('city-fact').innerText = city.fact || "Вы прибыли в город!";
         
-        // Настройка ползунков
         const p = Data.prices[city.tier];
         const maxGas = this.state.car.tank - this.state.gas;
         
@@ -208,7 +199,6 @@ window.Game = {
         this.state.coins -= bill;
         const p = Data.prices[this.state.currentCity.tier];
 
-        // Применяем пропорциональное восполнение
         if(p.hotel > 0) this.state.wake += (document.getElementById('sl-hotel').value / p.hotel) * (100 - this.state.wake);
         if(p.food > 0) this.state.food += (document.getElementById('sl-food').value / p.food) * (100 - this.state.food);
         if(p.repair > 0) this.state.hp += (document.getElementById('sl-hp').value / p.repair) * (100 - this.state.hp);
@@ -216,7 +206,6 @@ window.Game = {
         let maxGas = this.state.car.tank - this.state.gas;
         if(maxGas > 0 && p.gasPerLiter > 0) this.state.gas += (document.getElementById('sl-gas').value / (p.gasPerLiter * maxGas)) * maxGas;
 
-        // ПРОВЕРКА НА КОЛЛЕКЦИЮ ГОРОДА
         let hotelSpent = parseInt(document.getElementById('sl-hotel').value);
         let excBought = document.getElementById('chk-exc').checked;
         
@@ -233,7 +222,6 @@ window.Game = {
         this.updateTopUI();
     },
 
-    // --- 4. УТИЛИТЫ (Модалки, Квесты, Альбом) ---
     updateTopUI: function() {
         document.getElementById('val-coins').innerText = Math.round(this.state.coins);
         document.getElementById('val-gas').innerText = Math.round(this.state.gas);
@@ -251,7 +239,7 @@ window.Game = {
     },
 
     showQuest: function(city) {
-        let q = city.quests[0]; // Берем первый вопрос для примера
+        let q = city.quests[0];
         document.getElementById('quest-text').innerText = q.q;
         let ansDiv = document.getElementById('quest-answers'); ansDiv.innerHTML = '';
         
@@ -297,4 +285,22 @@ window.Game = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => Game.init());
+// =====================================================================
+// КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ИНИЦИАЛИЗАЦИЯ ВК (БЕЗ НЕЕ БУДЕТ ЗАВИСАНИЕ!)
+// =====================================================================
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        if (window.vkBridge) {
+            await vkBridge.send('VKWebAppInit'); // <- ИМЕННО ЭТА СТРОЧКА УБИРАЕТ СЕРЫЙ ЭКРАН С ЗАГРУЗКОЙ
+            const user = await vkBridge.send('VKWebAppGetUserInfo');
+            document.getElementById('player-name').innerText = user.first_name;
+            document.getElementById('player-avatar').src = user.photo_200;
+        }
+    } catch (error) {
+        console.log("Запущено вне ВК, демо-режим.");
+        document.getElementById('player-name').innerText = "Игрок";
+    }
+    
+    // Запускаем игру!
+    Game.init();
+});
