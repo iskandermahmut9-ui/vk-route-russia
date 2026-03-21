@@ -10,8 +10,8 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .btn-icon:hover { background: var(--accent); }
 
 /* Свечение для кнопки Альбома */
-.btn-glow { animation: goldGlow 1s infinite alternate; background: #FFD700 !important; color: #000 !important; }
-@keyframes goldGlow { from { box-shadow: 0 0 5px #FFD700; } to { box-shadow: 0 0 20px #FFD700; } }
+.btn-glow { animation: goldGlow 0.8s infinite alternate; background: #FFD700 !important; color: #000 !important; box-shadow: 0 0 20px #FFD700; transform: scale(1.05); }
+@keyframes goldGlow { from { box-shadow: 0 0 5px #FFD700; } to { box-shadow: 0 0 25px #FFD700; } }
 
 .header-center { display: flex; gap: 20px; font-weight: 800; font-size: 15px; background: rgba(0,0,0,0.5); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
 .res-item { display: flex; align-items: center; gap: 8px; text-shadow: 1px 1px 2px #000; transition: color 0.3s; }
@@ -19,29 +19,29 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .player-profile img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; }
 
 /* ПУЛЬСАЦИЯ ПРИ < 30% РЕСУРСОВ */
-.danger-pulse { animation: dangerPulse 0.8s infinite alternate !important; color: #F44336 !important; text-shadow: 0 0 10px #F44336 !important; }
-@keyframes dangerPulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.1); opacity: 0.7; } }
+.danger-pulse { animation: dangerPulse 0.5s infinite alternate !important; color: #F44336 !important; text-shadow: 0 0 15px #F44336 !important; }
+@keyframes dangerPulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.2); opacity: 0.8; } }
 
 /* ЛЭЙАУТ И КАРТА */
 .main-container { display: flex; flex: 1; position: relative; height: calc(100vh - var(--header-h)); }
 #map { flex: 1; height: 100%; background: #e5e3df; z-index: 1; }
 
-/* ЖИВЫЕ ИКОНКИ НА КАРТЕ */
-.custom-map-icon { width: 36px; height: 36px; border-radius: 50%; border: 3px solid #fff; object-fit: cover; box-shadow: 0 0 15px rgba(0,0,0,0.8); transition: transform 0.3s; }
-.custom-map-icon:hover { transform: scale(1.2); z-index: 2000; }
-.marker-tier-1 .custom-map-icon { border-color: #F44336; }
-.marker-tier-2 .custom-map-icon { border-color: #FFEB3B; }
-.marker-tier-3 .custom-map-icon { border-color: #9C27B0; }
-.marker-collected .custom-map-icon { border-color: #4CAF50; box-shadow: 0 0 15px #4CAF50; }
+/* ВОЗВРАЩЕННЫЕ КЛАССИЧЕСКИЕ ТОЧКИ НА КАРТЕ */
+.map-pin { background: transparent; border: none; text-align: center; }
+.map-pin i { font-size: 28px; text-shadow: 0 3px 6px rgba(0,0,0,0.8); transition: 0.2s; }
+.marker-tier-1 i { color: #F44336; } /* Красный */
+.marker-tier-2 i { color: #FFEB3B; } /* Желтый */
+.marker-tier-3 i { color: #9C27B0; } /* Фиолетовый */
+.marker-collected i { color: #4CAF50; } /* Зеленый - пройденный */
 .hidden-tier { opacity: 0; pointer-events: none; } 
 .marker-discovered { opacity: 1 !important; pointer-events: auto !important; }
 
-/* ИКОНКА МАШИНЫ (УМЕНЬШЕНА ДО АДЕКВАТНЫХ РАЗМЕРОВ) */
-.driving-car-icon { width: 30px; height: auto; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.8)); z-index: 3000 !important; margin-left: -15px !important; margin-top: -15px !important; }
+/* ИКОНКА МАШИНЫ - ТЕПЕРЬ МАЛЕНЬКАЯ И АККУРАТНАЯ */
+.driving-car-icon { width: 36px; height: auto; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.8)); z-index: 3000 !important; margin-left: -18px !important; margin-top: -18px !important; }
 
 /* ХАБ ГОРОДА И МАГАЗИН */
 .city-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 500; display: flex; justify-content: flex-start; align-items: flex-start; padding: 20px; pointer-events: auto; }
-.city-panel { background: rgba(28, 28, 28, 0.95); width: 420px; max-height: 100%; border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); border: 1px solid #444; overflow-y: auto; backdrop-filter: blur(10px); }
+.city-panel { background: rgba(28, 28, 28, 0.95); width: 440px; max-height: 100%; border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); border: 1px solid #444; overflow-y: auto; backdrop-filter: blur(10px); }
 .city-panel::-webkit-scrollbar { width: 6px; }
 .city-panel::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
 
@@ -49,16 +49,20 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .tier-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 900; background: #e74c3c; text-transform: uppercase; margin-bottom: 15px; }
 .city-fact { font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-bottom: 15px; }
 
-.shop-category { margin-bottom: 15px; border-bottom: 1px dashed #444; padding-bottom: 10px; }
-.shop-category h4 { margin: 0 0 8px 0; color: #FF9800; font-size: 13px; text-transform: uppercase; }
-.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-.btn-shop { flex: 1; background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; font-family: 'Montserrat', sans-serif; min-width: 120px; }
-.btn-shop:hover:not(:disabled) { background: #333; border-color: var(--accent); transform: translateY(-2px); }
-.btn-shop:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); background: #1a1a1a; }
-.btn-shop b { display: block; font-size: 13px; margin-bottom: 3px; }
-.btn-shop small { display: block; color: #8BC34A; font-size: 10px; font-weight: bold; margin-bottom: 3px; }
-.btn-shop .price { color: #FFD700; font-weight: 900; font-size: 13px; }
-.btn-shop.purchased { border-color: #4CAF50; background: rgba(76, 175, 80, 0.1); color: #4CAF50; }
+/* МАГАЗИН - КНОПКИ БЕЗ РАМОК, КРУПНЫЕ КАРТИНКИ */
+.shop-category { margin-bottom: 25px; border-bottom: 1px dashed #444; padding-bottom: 15px; }
+.shop-category h4 { margin: 0 0 15px 0; color: #FF9800; font-size: 14px; text-transform: uppercase; }
+.btn-group { display: flex; gap: 15px; flex-wrap: wrap; }
+
+/* Идеальные прозрачные кнопки */
+.btn-shop { flex: 1; background: transparent !important; border: none !important; color: #fff; padding: 0; cursor: pointer; text-align: center; transition: 0.2s; font-family: 'Montserrat', sans-serif; min-width: 140px; }
+.btn-shop:hover:not(:disabled) { transform: translateY(-5px); }
+.btn-shop:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
+.btn-shop-img { width: 100%; height: 90px; object-fit: contain; margin-bottom: 8px; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)); }
+.btn-shop-title { color: #FF9800; font-size: 16px; font-weight: 900; text-transform: uppercase; text-shadow: 0 2px 4px rgba(0,0,0,0.9); margin-bottom: 4px; }
+.btn-shop-desc { color: #8BC34A; font-size: 11px; font-weight: bold; margin-bottom: 4px; }
+.btn-shop-price { color: #FFD700; font-weight: 900; font-size: 15px; text-shadow: 0 2px 4px rgba(0,0,0,0.9); }
+.btn-shop.purchased .btn-shop-title { color: #4CAF50; }
 
 .city-footer { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .btn-action { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; transition: 0.2s; font-family: 'Montserrat', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
@@ -76,20 +80,19 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
 .modal-box { background: var(--modal-bg); padding: 30px; border-radius: 16px; border: 1px solid #333; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
-.modal-head { font-weight: 900; font-size: 22px; margin-bottom: 20px; font-family: 'Russo One', sans-serif; text-transform: uppercase; color: #fff; }
+.modal-head { font-weight: 900; font-size: 24px; margin-bottom: 20px; font-family: 'Russo One', sans-serif; text-transform: uppercase; color: #fff; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
 
-.diff-card, .car-card { background: #2a2a2a; border: 2px solid #444; border-radius: 12px; padding: 15px; cursor: pointer; transition: 0.2s; }
+.diff-card, .car-card { background: transparent; border: 2px solid #444; border-radius: 12px; padding: 15px; cursor: pointer; transition: 0.2s; }
 .diff-card:hover, .car-card:hover { border-color: var(--accent); background: rgba(255, 87, 34, 0.1); transform: translateY(-5px); }
 .diff-card h3, .car-card h3 { margin: 0 0 8px 0; font-size: 15px; color: #fff; } 
 .diff-card p, .car-card p { font-size: 11px; color: #aaa; margin: 0; line-height: 1.4; }
 
-.album-card { background: #1a1a1a; border: 2px solid #444; border-radius: 12px; padding: 15px 10px; text-align: center; transition: 0.3s; }
+.album-card { background: transparent; border: 2px solid #444; border-radius: 12px; padding: 15px 10px; text-align: center; transition: 0.3s; }
 .album-card.collected { border-color: #4CAF50; box-shadow: 0 0 10px rgba(76, 175, 80, 0.2); }
 .album-card i { font-size: 30px; margin-bottom: 10px; color: #444; }
 .album-card.collected i { color: #4CAF50; }
-/* Подсветка последней карточки */
-.album-card.new-medal { animation: goldGlow 2s infinite alternate; border-color: #FFD700; }
+.album-card.new-medal { animation: goldGlow 1s infinite alternate; border-color: #FFD700; }
 .album-card.new-medal i { color: #FFD700; }
 
 .toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
@@ -97,29 +100,29 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 @keyframes fadein { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeout { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
 
-/* КАРТИНКИ (БЕЗ РАМОК И ФОНОВ) */
+/* КАРТИНКИ И СТАНДАРТЫ ПРОЗРАЧНОСТИ */
 .city-img-container { width: 100%; height: 160px; text-align: center; margin-bottom: 15px; background: transparent !important; border: none !important; }
 .city-img-container img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.5)); }
 .car-img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 10px; background: transparent !important; border: none !important; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.6)); }
-.event-image { width: 100%; height: 160px; object-fit: contain; margin-bottom: 10px; background: transparent !important; border: none !important; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.4)); }
+.event-image { width: 100%; height: 160px; object-fit: contain; margin-bottom: 15px; background: transparent !important; border: none !important; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.6)); }
 .guide-image { width: 120px; height: 120px; object-fit: contain; margin: 0 auto; display: block; background: transparent !important; border: none !important; filter: drop-shadow(0 0 15px rgba(255,215,0,0.4)); }
-.btn-shop-img { width: 100%; height: 70px; object-fit: contain; background: transparent !important; border: none !important; margin-bottom: 5px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); }
-.btn-shop-content { padding: 4px; }
 
-/* === АНИМАЦИИ ПОКУПОК И ЭФФЕКТОВ === */
+/* АНИМАЦИИ ПОКУПОК */
 .zoom-purchase-img { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); width: 300px; z-index: 10001; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.9)); animation: zoomInOut 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: none; }
 @keyframes zoomInOut { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
 
-.floating-text { position: fixed; font-weight: 900; font-size: 35px; color: #F44336; z-index: 10002; text-shadow: 0 4px 10px rgba(0,0,0,0.8); font-family: 'Russo One', sans-serif; pointer-events: none; animation: floatUp 1.5s forwards; }
+.floating-text { position: fixed; font-weight: 900; font-size: 40px; color: #F44336; z-index: 10002; text-shadow: 0 4px 10px rgba(0,0,0,0.9); font-family: 'Russo One', sans-serif; pointer-events: none; animation: floatUp 1.5s forwards; }
 .floating-text.positive { color: #4CAF50; }
-@keyframes floatUp { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-100px) scale(1.5); opacity: 0; } }
+@keyframes floatUp { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-120px) scale(1.5); opacity: 0; } }
 
-.confetti { position: absolute; width: 10px; height: 10px; z-index: 10000; animation: fall 3s linear forwards; pointer-events: none; border-radius: 50%; }
-@keyframes fall { 0% { transform: translateY(-50px) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+/* НАСТОЯЩИЙ ФЕЙЕРВЕРК (Взрыв из центра) */
+.firework-particle { position: fixed; width: 10px; height: 10px; border-radius: 50%; z-index: 10005; animation: explode 1.2s ease-out forwards; pointer-events: none; box-shadow: 0 0 10px currentColor; }
+@keyframes explode { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; } }
 
-/* Интерактив (QTE Яма/Камера) */
+/* Интерактив QTE */
 .qte-container { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; }
-.qte-warning { font-family: 'Russo One', sans-serif; font-size: 24px; color: #fff; text-shadow: 0 4px 10px rgba(0,0,0,0.9); background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 12px;}
+.qte-warning { font-family: 'Russo One', sans-serif; font-size: 26px; color: #fff; text-shadow: 0 4px 10px rgba(0,0,0,0.9); background: rgba(0,0,0,0.8); padding: 15px 25px; border-radius: 12px; animation: pulseQte 0.3s infinite alternate;}
+@keyframes pulseQte { 0% { transform: scale(1); } 100% { transform: scale(1.1); color: #FFEB3B; } }
 
 @media screen and (max-width: 900px) {
     :root { --header-h: auto; }

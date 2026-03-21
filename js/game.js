@@ -7,7 +7,9 @@ window.Game = {
         car: null, diff: null, currentCity: null, history: [], collected: [], discovered: [],
         isMoving: false, hotelPaid: false, excPaid: false,
         driveMode: null, travelData: null, qteActive: false,
-        newMedalCity: null // Для подсветки нового города в альбоме
+        newMedalCity: null,
+        // Счетчики для 100% появления событий
+        kmSinceEvent: 0, kmSinceQTE: 0
     },
 
     init: async function() {
@@ -34,7 +36,7 @@ window.Game = {
         let today = new Date().toDateString();
         if (last !== today) {
             this.state.coins += 1200;
-            this.state.adsWatched = 0; // Сбрасываем лимит рекламы
+            this.state.adsWatched = 0; 
             localStorage.setItem('rr_daily', today);
             localStorage.setItem('rr_ads', 0);
             this.toast("Ежедневный бонус: +1200 монет!");
@@ -68,18 +70,22 @@ window.Game = {
         document.getElementById('garage-modal').style.display = 'flex';
     },
 
+    goBackToDiff: function() {
+        document.getElementById('garage-modal').style.display = 'none';
+        document.getElementById('difficulty-modal').style.display = 'flex';
+    },
+
     renderMap: function() {
         Data.cities.forEach(c => {
             let isHidden = c.tier === 3;
             let tierClass = c.tier === 1 ? 'marker-tier-1' : (c.tier === 2 ? 'marker-tier-2' : 'marker-tier-3');
             if (isHidden) tierClass += ' hidden-tier';
             
-            let cityImgSrc = c.id === "moscow" ? "assets/cities/moscow.png" : `assets/cities/tier${c.tier}.png`;
-            
+            // ВЕРНУЛИ АККУРАТНЫЕ ПИНЫ НА КАРТУ
             let icon = L.divIcon({ 
                 className: `map-pin ${tierClass}`, 
-                html: `<img src="${cityImgSrc}" class="custom-map-icon">`, 
-                iconSize: [36, 36], iconAnchor: [18, 18] 
+                html: '<i class="fa-solid fa-location-dot"></i>', 
+                iconSize: [30, 30], iconAnchor: [15,30] 
             });
             let m = L.marker(c.coords, {icon: icon}).addTo(this.map);
             this.markers[c.id] = m;
@@ -121,7 +127,7 @@ window.Game = {
             
             let modesHtml = `
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 70, 1.0, 1.5)">
-                    <h3 style="color:#8BC34A;">Релакс (70 км/ч)</h3><p>Много интерактива, долгий путь.</p></div>
+                    <h3 style="color:#8BC34A;">Релакс (70 км/ч)</h3><p>Больше интерактива на дороге.</p></div>
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 100, 1.0, 1.0)">
                     <h3 style="color:#2196F3;">Оптимальный (100 км/ч)</h3><p>Баланс времени и событий.</p></div>
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 140, 1.5, 0)">
@@ -186,14 +192,17 @@ window.Game = {
 
             let tickKm = td.distKm * (td.stepInc / td.coords.length);
             td.kmPassedTotal += tickKm;
+            this.state.kmSinceEvent += tickKm;
+            this.state.kmSinceQTE += tickKm;
             document.getElementById('hud-dist').innerText = Math.round(td.kmPassedTotal);
 
+            // Траты ресурсов
             let wakeDrain = (tickKm / 700) * 100;
             let foodDrain = (tickKm / 700) * 100 * (this.state.car.id !== "bike" ? 1 : 2);
             let gasDrain = this.state.car.id !== "bike" ? (this.state.car.cons / 100) * tickKm * this.state.driveMode.gasMult : 0;
             let hpDrain = (tickKm / 100) * this.state.car.hpLoss;
 
-            // Жестко блокируем отрицательные значения
+            // Жестко блокируем минусы
             this.state.wake = Math.max(0, this.state.wake - wakeDrain);
             this.state.food = Math.max(0, this.state.food - foodDrain);
             this.state.gas = Math.max(0, this.state.gas - gasDrain);
@@ -201,34 +210,76 @@ window.Game = {
 
             this.updateTopUI();
 
-            // ЭВАКУАТОР ПРИ ПОЛНОМ ОБСЫХАНИИ (Логика Ближайшего Города)
+            // === ИДЕАЛЬНАЯ ЛОГИКА ОКОНЧАНИЯ БЕНЗИНА ===
             if (this.state.gas <= 0 && this.state.car.id !== "bike") {
                 clearInterval(this.animationInterval);
                 this.state.isMoving = false;
                 
-                let adLimitStr = `(Осталось ${MAX_ADS_PER_DAY - this.state.adsWatched} вызовов на сегодня)`;
+                document.getElementById('event-img').src = `assets/events/moshen.png`;
+                document.getElementById('event-title').innerText = "БАК ПУСТ!";
+                document.getElementById('event-desc').innerText = "Машина заглохла. На обочине останавливается мутный тип: 'Слыш, брат, обсох? Дам 10 литров, но цена двойная.' Либо вызывайте эвакуатор.";
                 
-                this.showConfirm("БАК ПУСТ!", `Вы заглохли на трассе. Вызвать эвакуатор до ближайшего города за просмотр рекламы? ${adLimitStr}`, () => {
+                let actionsDiv = document.getElementById('event-actions');
+                actionsDiv.innerHTML = '';
+                
+                // Вариант 1: Барыга (140 монет)
+                let btnBuy = document.createElement('button');
+                btnBuy.className = 'btn-action';
+                btnBuy.innerText = "Купить 10л (140 🪙)";
+                btnBuy.onclick = () => {
+                    if (this.state.coins >= 140) {
+                        this.state.coins -= 140;
+                        this.state.gas = 10;
+                        this.playFloatingText("-140 🪙", false);
+                        this.updateTopUI();
+                        document.getElementById('event-modal').style.display='none';
+                        this.resumeTravel();
+                    } else {
+                        this.toast("У вас нет 140 монет! Ищите другой выход.");
+                    }
+                };
+                actionsDiv.appendChild(btnBuy);
+
+                // Вариант 2: Эвакуатор
+                let adLimitStr = `[Осталось ${MAX_ADS_PER_DAY - this.state.adsWatched}]`;
+                let btnTow = document.createElement('button');
+                btnTow.className = 'btn-action';
+                btnTow.style.background = "#2196F3";
+                btnTow.innerText = `Эвакуатор за Рекламу ${adLimitStr}`;
+                btnTow.onclick = () => {
                     if (this.state.adsWatched < MAX_ADS_PER_DAY) {
+                        document.getElementById('event-modal').style.display='none';
                         this.watchAd(() => {
                             this.teleportToNearestCity(pos, td.line);
                         });
                     } else {
-                        this.toast("Лимит рекламы исчерпан. Вы застряли на трассе. Игра окончена!");
-                        setTimeout(() => window.location.reload(), 3000);
+                        this.toast("Лимит рекламы исчерпан!");
                     }
-                });
+                };
+                actionsDiv.appendChild(btnTow);
+
+                // Вариант 3: Конец игры
+                let btnDie = document.createElement('button');
+                btnDie.className = 'btn-action btn-leave';
+                btnDie.innerText = "Сдаться (Начать заново)";
+                btnDie.onclick = () => { window.location.reload(); };
+                actionsDiv.appendChild(btnDie);
+
+                document.getElementById('event-modal').style.display = 'flex';
                 return;
             }
 
-            // Штраф за отсутствие сна (Темнеет в глазах)
-            if (this.state.wake <= 0) {
-                // Если едем без сна, скорость падает, игрок ползет как черепаха
-                td.stepInc = (td.coords.length / totalTicks) * 0.2; 
+            // Штраф за сон
+            if (this.state.wake <= 0) td.stepInc = (td.coords.length / totalTicks) * 0.2; 
+
+            // === ГАРАНТИРОВАННЫЙ ИНТЕРАКТИВ (ПО КИЛОМЕТРАЖУ) ===
+            if (this.state.kmSinceQTE >= 70 && !this.state.qteActive) {
+                this.state.kmSinceQTE = 0;
+                this.spawnQTE();
             }
 
-            if (Math.random() < 0.005 && !this.state.qteActive) this.spawnQTE();
-            if (Math.random() < 0.001 && !this.state.qteActive) {
+            if (this.state.kmSinceEvent >= 150 && !this.state.qteActive) {
+                this.state.kmSinceEvent = 0;
                 clearInterval(this.animationInterval);
                 this.state.isMoving = false;
                 this.triggerStoryEvent();
@@ -257,43 +308,36 @@ window.Game = {
         }, 40);
     },
 
-    // ЛОГИКА ЭВАКУАТОРОВ И РЕКЛАМЫ
     watchAd: function(onSuccess) {
         this.state.adsWatched++;
         localStorage.setItem('rr_ads', this.state.adsWatched);
-        
-        // Симуляция загрузки рекламы (в релизе тут будет вызов VKBridge)
-        this.toast("Смотрим рекламу спонсора...");
-        setTimeout(() => {
-            onSuccess();
-        }, 2000);
+        this.toast("Смотрим рекламу...");
+        setTimeout(() => onSuccess(), 2000);
     },
 
     teleportToNearestCity: function(currentPos, currentLine) {
         let minDist = Infinity;
         let closestCity = null;
-        
         Data.cities.forEach(c => {
             let dist = this.map.distance(currentPos, c.coords);
             if (dist < minDist) { minDist = dist; closestCity = c; }
         });
 
-        this.toast(`Вас отбуксировали в ближайший город: ${closestCity.name}`);
-        this.map.removeLayer(currentLine); // Убираем недорисованную линию
-        
+        this.toast(`Вас отбуксировали в: ${closestCity.name}`);
+        this.map.removeLayer(currentLine); 
         this.carMarker.setLatLng(closestCity.coords);
         this.map.panTo(closestCity.coords);
         
-        this.state.gas = 2; // Чуть-чуть бензина, чтобы интерфейс работал
-        this.finishTravel(closestCity, currentLine); // Открываем город
+        this.state.gas = 2; // Чуть бензина для выживания
+        this.finishTravel(closestCity, currentLine); 
     },
 
     spawnQTE: function() {
         this.state.qteActive = true;
         let types = [
-            { id: 'camera', icon: 'fa-camera', color: '#F44336', text: 'КАМЕРА!', penalty: {coins: 250}, msgFail: "Вспышка! Штраф -250 монет." },
+            { id: 'camera', icon: 'fa-camera', color: '#F44336', text: 'КАМЕРА! ЖМИ!', penalty: {coins: 250}, msgFail: "Вспышка! Штраф -250 монет." },
             { id: 'hole', icon: 'fa-triangle-exclamation', color: '#F44336', text: 'ЯМА! ЖМИ ЧТОБЫ ОБЪЕХАТЬ!', penalty: {hp: 15}, msgFail: "Удар подвески! Прочность -15%." },
-            { id: 'photo', icon: 'fa-image', color: '#4CAF50', text: 'КРАСИВЫЙ ВИД! ЖМИ!', bonus: {coins: 300, rating: 5}, msgSuccess: "Отличный кадр! +5 Очков Блогера и донат." }
+            { id: 'photo', icon: 'fa-image', color: '#4CAF50', text: 'КРАСИВЫЙ ВИД! ЖМИ!', bonus: {coins: 100, rating: 5}, msgSuccess: "Отличный кадр! +5 Очков Блогера и донат." }
         ];
         
         let qte = types[Math.floor(Math.random() * types.length)];
@@ -325,7 +369,7 @@ window.Game = {
                 btnOk.className = 'btn-action'; btnOk.innerText = "ОТЛИЧНО";
                 btnOk.onclick = () => {
                     this.state.coins += qte.bonus.coins; 
-                    this.state.rating += qte.bonus.rating; // НАЧИСЛЯЕМ ОЧКИ БЛОГЕРА
+                    this.state.rating += qte.bonus.rating; // +5 Очков Блогера
                     this.playFloatingText(`+${qte.bonus.coins} 🪙`, true);
                     this.playFloatingText(`+${qte.bonus.rating} 📸`, true);
                     this.updateTopUI();
@@ -365,7 +409,6 @@ window.Game = {
 
     triggerStoryEvent: function() {
         let ev = Data.events[Math.floor(Math.random() * Data.events.length)];
-        
         if (ev.id === "police") {
             if (this.state.driveMode.speed === 140) ev.choices[0].msg = "Штраф за превышение: -500 монет!";
             else ev.choices[0].msg = "Счастливого пути. Вы потеряли немного времени.";
@@ -411,7 +454,7 @@ window.Game = {
                         this.state.discovered.push(hiddenCity.id);
                         this.markers[hiddenCity.id].getElement().classList.remove('hidden-tier');
                         this.markers[hiddenCity.id].getElement().classList.add('marker-discovered');
-                        this.toast(`Автостопщик показал на карте: ${hiddenCity.name}!`);
+                        this.toast(`Автостопщик показал: ${hiddenCity.name}!`);
                     }
                 }
 
@@ -458,7 +501,7 @@ window.Game = {
         let drivenLine = L.polyline(drivenCoords, {color: '#555', weight: 3, dashArray: '5, 10'}).addTo(this.map);
         this.routeLines.push(drivenLine);
 
-        this.toast(`Перестраиваем маршрут в ${passingCity.name}...`);
+        this.toast(`Едем в ${passingCity.name}...`);
         const url = `https://router.project-osrm.org/route/v1/driving/${currentPos.lng},${currentPos.lat};${passingCity.coords[1]},${passingCity.coords[0]}?overview=full&geometries=geojson`;
 
         try {
@@ -478,7 +521,7 @@ window.Game = {
         this.state.history.push(city.id);
         document.getElementById('travel-hud').style.display = 'none';
         
-        if (line) line.setStyle({color: '#555', weight: 3, dashArray: '5, 10', opacity: 1});
+        if(line) line.setStyle({color: '#555', weight: 3, dashArray: '5, 10', opacity: 1});
         this.updateMarkers();
         this.updateTopUI();
         
@@ -514,16 +557,15 @@ window.Game = {
             document.getElementById('hotel-hint').innerText = "Сон в этой машине не восстанавливает бодрость.";
         }
 
-        // Реклама в городе
         let btnAd = document.getElementById('btn-city-ad');
-        btnAd.innerText = `РЕКЛАМА (+500 🪙) [${MAX_ADS_PER_DAY - this.state.adsWatched} шт]`;
+        btnAd.innerText = `РЕКЛАМА (+500 🪙) [${MAX_ADS_PER_DAY - this.state.adsWatched}]`;
         btnAd.onclick = () => {
             if (this.state.adsWatched < MAX_ADS_PER_DAY) {
                 this.watchAd(() => {
                     this.state.coins += 500;
                     this.playFloatingText("+500 🪙", true);
                     this.updateTopUI();
-                    btnAd.innerText = `РЕКЛАМА (+500 🪙) [${MAX_ADS_PER_DAY - this.state.adsWatched} шт]`;
+                    btnAd.innerText = `РЕКЛАМА (+500 🪙) [${MAX_ADS_PER_DAY - this.state.adsWatched}]`;
                 });
             } else {
                 this.toast("Лимит рекламы на сегодня исчерпан!");
@@ -538,18 +580,19 @@ window.Game = {
         const p = Data.prices[city.tier];
         let html = "";
 
+        // МАГАЗИН БЕЗ РАМОК, ТЕКСТ НАД КАРТИНКАМИ
         html += `<div class="shop-category"><h4>🛏️ Ночлег</h4><div class="btn-group">`;
         if (p.hotel > 0) {
             let isFull = this.state.wake >= 100 || this.state.hotelPaid;
             html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hotel}, 100, 'assets/ui/hotel.png')">
                 <img src="assets/ui/hotel.png" class="btn-shop-img">
-                <div class="btn-shop-content"><b>Гостиница</b><small>+100% бодрости</small><span class="price">${p.hotel} 🪙</span></div></button>`;
+                <div class="btn-shop-title">Гостиница</div><div class="btn-shop-desc">+100% бодрости</div><div class="btn-shop-price">${p.hotel} 🪙</div></button>`;
         }
         if (p.hostel > 0) {
             let isFull = this.state.wake >= 100 || this.state.hotelPaid;
             html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hostel}, 80, 'assets/ui/hostel.png')">
                 <img src="assets/ui/hostel.png" class="btn-shop-img">
-                <div class="btn-shop-content"><b>Мотель</b><small>+80% бодрости</small><span class="price">${p.hostel} 🪙</span></div></button>`;
+                <div class="btn-shop-title">Мотель</div><div class="btn-shop-desc">+80% бодрости</div><div class="btn-shop-price">${p.hostel} 🪙</div></button>`;
         }
         html += `</div></div>`;
 
@@ -558,13 +601,13 @@ window.Game = {
             let isFull = this.state.food >= 100;
             html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.rest}, 100, 'assets/ui/rest.png')">
                 <img src="assets/ui/rest.png" class="btn-shop-img">
-                <div class="btn-shop-content"><b>Ресторан</b><small>+100% сытости</small><span class="price">${p.rest} 🪙</span></div></button>`;
+                <div class="btn-shop-title">Ресторан</div><div class="btn-shop-desc">+100% сытости</div><div class="btn-shop-price">${p.rest} 🪙</div></button>`;
         }
         if (p.fastfood > 0) {
             let isFull = this.state.food >= 100;
             html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.fastfood}, 80, 'assets/ui/fastfood.png')">
                 <img src="assets/ui/fastfood.png" class="btn-shop-img">
-                <div class="btn-shop-content"><b>Столовая</b><small>+80% сытости</small><span class="price">${p.fastfood} 🪙</span></div></button>`;
+                <div class="btn-shop-title">Столовая</div><div class="btn-shop-desc">+80% сытости</div><div class="btn-shop-price">${p.fastfood} 🪙</div></button>`;
         }
         html += `</div></div>`;
 
@@ -573,10 +616,10 @@ window.Game = {
             let fullPrice = missingGas * p.gas;
             let tenPrice = 10 * p.gas;
             html += `<div class="shop-category"><h4>⛽ АЗС (${p.gas} 🪙/л)</h4><div class="btn-group">`;
-            html += `<button class="btn-shop" style="padding:10px !important" ${missingGas < 10 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${tenPrice}, 10, null)">
-                <b>+10 Литров</b><span class="price">${tenPrice} 🪙</span></button>`;
-            html += `<button class="btn-shop" style="padding:10px !important" ${missingGas <= 0 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${fullPrice}, ${missingGas}, null)">
-                <b>Полный бак</b><span class="price">${fullPrice} 🪙</span></button>`;
+            html += `<button class="btn-shop" style="border:1px solid #444 !important; background:#2a2a2a !important; padding:10px !important; border-radius:8px !important;" ${missingGas < 10 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${tenPrice}, 10, null)">
+                <div class="btn-shop-title">+10 Литров</div><div class="btn-shop-price">${tenPrice} 🪙</div></button>`;
+            html += `<button class="btn-shop" style="border:1px solid #444 !important; background:#2a2a2a !important; padding:10px !important; border-radius:8px !important;" ${missingGas <= 0 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${fullPrice}, ${missingGas}, null)">
+                <div class="btn-shop-title">Полный бак</div><div class="btn-shop-price">${fullPrice} 🪙</div></button>`;
             html += `</div></div>`;
         }
 
@@ -585,24 +628,23 @@ window.Game = {
             let fullPrice = missingHp * p.repair;
             let tenPrice = 10 * p.repair;
             html += `<div class="shop-category"><h4>🔧 Автосервис</h4><div class="btn-group">`;
-            html += `<button class="btn-shop" style="padding:10px !important" ${missingHp < 10 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${tenPrice}, 10, null)">
-                <b>+10% Ремонт</b><span class="price">${tenPrice} 🪙</span></button>`;
-            html += `<button class="btn-shop" style="padding:10px !important" ${missingHp <= 0 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${fullPrice}, ${missingHp}, null)">
-                <b>Починить всё</b><span class="price">${fullPrice} 🪙</span></button>`;
+            html += `<button class="btn-shop" style="border:1px solid #444 !important; background:#2a2a2a !important; padding:10px !important; border-radius:8px !important;" ${missingHp < 10 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${tenPrice}, 10, null)">
+                <div class="btn-shop-title">+10% Ремонт</div><div class="btn-shop-price">${tenPrice} 🪙</div></button>`;
+            html += `<button class="btn-shop" style="border:1px solid #444 !important; background:#2a2a2a !important; padding:10px !important; border-radius:8px !important;" ${missingHp <= 0 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${fullPrice}, ${missingHp}, null)">
+                <div class="btn-shop-title">Починить всё</div><div class="btn-shop-price">${fullPrice} 🪙</div></button>`;
             html += `</div></div>`;
         }
 
         if (p.exc > 0) {
             html += `<div class="shop-category" style="border:none;"><h4>🎫 Культура</h4><div class="btn-group">`;
-            html += `<button class="btn-shop ${this.state.excPaid ? 'purchased' : ''}" style="padding:10px !important" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.startExcursion(${p.exc})">
-                <b>Взять Экскурсию</b><small>Для Альбома</small><span class="price">${p.exc} 🪙</span></button>`;
+            html += `<button class="btn-shop ${this.state.excPaid ? 'purchased' : ''}" style="border:1px solid #444 !important; background:#2a2a2a !important; padding:10px !important; border-radius:8px !important;" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.startExcursion(${p.exc})">
+                <div class="btn-shop-title">Взять Экскурсию</div><div class="btn-shop-desc">Для Альбома</div><div class="btn-shop-price">${p.exc} 🪙</div></button>`;
             html += `</div></div>`;
         }
 
         document.getElementById('city-shop').innerHTML = html;
     },
 
-    // АНИМАЦИИ ПОКУПОК
     buyItem: function(type, price, amount, imgSrc) {
         if (this.state.coins < price) { this.toast("Не хватает монет!"); return; }
         this.state.coins -= price;
@@ -631,21 +673,24 @@ window.Game = {
         let el = document.createElement('div');
         el.className = `floating-text ${isPositive ? 'positive' : ''}`;
         el.innerText = text;
-        el.style.top = '50%';
-        el.style.left = '50%';
         document.body.appendChild(el);
         setTimeout(() => el.remove(), 1500);
     },
 
-    // ЭФФЕКТ ФЕЙЕРВЕРКА (Конфетти)
+    // НАСТОЯЩИЙ ФЕЙЕРВЕРК ЧАСТИЦАМИ ИЗ ЦЕНТРА
     playFireworks: function() {
-        for (let i = 0; i < 50; i++) {
-            let conf = document.createElement('div');
-            conf.className = 'confetti';
-            conf.style.left = Math.random() * 100 + 'vw';
-            conf.style.background = ['#FFD700', '#FF5722', '#4CAF50', '#2196F3'][Math.floor(Math.random()*4)];
-            document.body.appendChild(conf);
-            setTimeout(() => conf.remove(), 3000);
+        for (let i = 0; i < 40; i++) {
+            let p = document.createElement('div');
+            p.className = 'firework-particle';
+            p.style.left = '50%';
+            p.style.top = '50%';
+            let angle = Math.random() * Math.PI * 2;
+            let velocity = 50 + Math.random() * 150;
+            p.style.setProperty('--dx', Math.cos(angle) * velocity + 'px');
+            p.style.setProperty('--dy', Math.sin(angle) * velocity + 'px');
+            p.style.color = ['#FFD700', '#FF5722', '#4CAF50', '#2196F3'][Math.floor(Math.random()*4)];
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 1200);
         }
     },
 
@@ -669,14 +714,13 @@ window.Game = {
             b.onclick = () => {
                 document.getElementById('quest-modal').style.display = 'none';
                 if(i === q.right) { 
-                    let reward = Data.prices[this.state.currentCity.tier].quizReward;
-                    this.state.coins += reward;
-                    this.state.rating += 20; // Очки блогера за квест
-                    this.playFloatingText(`+${reward} 🪙`, true);
-                    this.playFloatingText(`+20 📸`, true);
+                    // +1 ОЧКО БЛОГЕРА ЗА ОТВЕТ НА ЭКСКУРСИИ
+                    this.state.rating += 1; 
+                    this.playFloatingText(`+1 📸`, true);
                     this.playFireworks();
+                    this.toast("Верный ответ!");
                 } else { 
-                    this.toast("Неверный ответ! Вы ничего не заработали."); 
+                    this.toast("Неверный ответ!"); 
                 }
                 
                 this.state.excPaid = true;
@@ -692,10 +736,10 @@ window.Game = {
     checkCityCompletion: function() {
         if (this.state.hotelPaid && this.state.excPaid && !this.state.collected.includes(this.state.currentCity.id)) {
             this.state.collected.push(this.state.currentCity.id);
-            this.state.newMedalCity = this.state.currentCity.id; // Запоминаем для подсветки в альбоме
+            this.state.newMedalCity = this.state.currentCity.id; 
             
             this.toast("Отлично! Город добавлен в Альбом!");
-            document.getElementById('btn-album').classList.add('btn-glow'); // Заставляем мигать кнопку Альбома
+            document.getElementById('btn-album').classList.add('btn-glow'); 
             
             this.updateMarkers();
         }
@@ -714,7 +758,6 @@ window.Game = {
         document.getElementById('city-overlay').style.display = 'none';
     },
 
-    // ПУЛЬСАЦИЯ ПРИ < 30%
     updateTopUI: function() {
         document.getElementById('val-coins').innerText = Math.round(this.state.coins);
         document.getElementById('val-rating').innerText = Math.round(this.state.rating);
@@ -749,7 +792,6 @@ window.Game = {
     },
 
     openAlbum: function() {
-        // Убираем свечение кнопки при открытии
         document.getElementById('btn-album').classList.remove('btn-glow');
 
         let grid = document.getElementById('album-grid'); grid.innerHTML = '';
@@ -766,7 +808,6 @@ window.Game = {
                         <div style="font-weight:bold; font-size:13px;">${c.name}</div>
                     </div>`;
             });
-            // Сбрасываем "новизну" после просмотра
             this.state.newMedalCity = null; 
         }
         document.getElementById('album-modal').style.display = 'flex';

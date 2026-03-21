@@ -51,7 +51,7 @@
             <h2 id="city-name" class="city-title">Город</h2>
             <span id="city-tier" class="tier-badge">Уровень</span>
             <p id="city-fact" class="city-fact"></p>
-            <p style="font-size:12px; color:#FF9800; font-weight:bold; margin-bottom:15px; text-align:center; animation: pulse 1.5s infinite;">*Для отметки в Альбом нужны Ночлег и Экскурсия</p>
+            <p style="font-size:13px; color:#FF9800; font-weight:bold; margin-bottom:20px; text-align:center;">*Для карточки в Альбом нужны Ночлег и Экскурсия</p>
             
             <div id="city-shop" class="city-shop"></div>
             
@@ -88,8 +88,9 @@
 
 <div id="garage-modal" class="modal-overlay">
     <div class="modal-box" style="max-width: 800px;">
-        <div class="modal-head">ГАРАЖ 2.0</div>
-        <div id="garage-list" class="grid-3"></div>
+        <div class="modal-head">ГАРАЖ</div>
+        <div id="garage-list" class="grid-3" style="margin-bottom: 20px;"></div>
+        <button class="btn-action btn-leave" onclick="Game.goBackToDiff()">НАЗАД К ВЫБОРУ</button>
     </div>
 </div>
 
@@ -106,7 +107,7 @@
     <div class="modal-box">
         <img id="event-img" src="" class="event-image" alt="">
         <div class="modal-head" id="event-title" style="color: #FFD700; margin-top: 15px;">СОБЫТИЕ</div>
-        <p id="event-desc" style="font-size: 14px; margin-bottom: 25px; line-height: 1.5; color: #ccc;"></p>
+        <p id="event-desc" style="font-size: 15px; margin-bottom: 25px; line-height: 1.5; color: #fff;"></p>
         <div id="event-actions" style="display: flex; gap: 10px; flex-direction: column;"></div>
     </div>
 </div>
