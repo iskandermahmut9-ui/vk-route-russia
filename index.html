@@ -20,11 +20,12 @@
     </div>
     
     <div class="header-center" id="resource-panel" style="display: none;">
-        <div class="res-item"><i class="fa-solid fa-coins" style="color: #FFD700;"></i> <span id="val-coins">0</span></div>
-        <div class="res-item"><i class="fa-solid fa-gas-pump" style="color: #FF5722;"></i> <span id="val-gas">0</span> л.</div>
-        <div class="res-item"><i class="fa-solid fa-utensils" style="color: #8BC34A;"></i> <span id="val-food">0</span>%</div>
-        <div class="res-item"><i class="fa-solid fa-bed" style="color: #2196F3;"></i> <span id="val-wake">0</span>%</div>
-        <div class="res-item"><i class="fa-solid fa-wrench" style="color: #4CAF50;"></i> <span id="val-hp">0</span>%</div>
+        <div class="res-item" title="Очки Блогера"><i class="fa-solid fa-camera" style="color: #9C27B0;"></i> <span id="val-rating">0</span></div>
+        <div class="res-item" title="Монеты"><i class="fa-solid fa-coins" style="color: #FFD700;"></i> <span id="val-coins">0</span></div>
+        <div class="res-item" title="Бензин"><i class="fa-solid fa-gas-pump" style="color: #FF5722;"></i> <span id="val-gas">0</span> л.</div>
+        <div class="res-item" title="Еда"><i class="fa-solid fa-utensils" style="color: #8BC34A;"></i> <span id="val-food">0</span>%</div>
+        <div class="res-item" title="Бодрость"><i class="fa-solid fa-bed" style="color: #2196F3;"></i> <span id="val-wake">0</span>%</div>
+        <div class="res-item" title="Прочность"><i class="fa-solid fa-wrench" style="color: #4CAF50;"></i> <span id="val-hp">0</span>%</div>
     </div>
 
     <div class="header-right">
@@ -39,8 +40,7 @@
     <div id="map"></div>
 
     <div id="qte-layer" style="display:none; position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); z-index:2000;">
-        <button id="qte-btn" style="font-size: 40px; padding: 20px; border-radius: 50%; width: 100px; height: 100px; border: 4px solid #fff; cursor: pointer; box-shadow: 0 0 30px rgba(0,0,0,0.9); animation: pulse 0.5s infinite alternate;"></button>
-    </div>
+        </div>
 
     <div id="city-overlay" class="city-overlay" style="display: none;">
         <div class="city-panel">
@@ -51,6 +51,7 @@
             <h2 id="city-name" class="city-title">Город</h2>
             <span id="city-tier" class="tier-badge">Уровень</span>
             <p id="city-fact" class="city-fact"></p>
+            <p style="font-size:12px; color:#FF9800; font-weight:bold; margin-bottom:15px; text-align:center; animation: pulse 1.5s infinite;">*Для отметки в Альбом нужны Ночлег и Экскурсия</p>
             
             <div id="city-shop" class="city-shop"></div>
             
@@ -134,7 +135,7 @@
     <div class="modal-box" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
         <div class="modal-head">АЛЬБОМ ДОСТИЖЕНИЙ</div>
         <div id="album-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;"></div>
-        <button class="btn-action btn-leave" onclick="document.getElementById('album-modal').style.display='none'" style="margin-top:20px;">ЗАКРЫТЬ</button>
+        <button class="btn-action btn-leave" onclick="document.getElementById('album-modal').style.display='none'; document.getElementById('btn-album').classList.remove('btn-glow');" style="margin-top:20px;">ЗАКРЫТЬ</button>
     </div>
 </div>
 

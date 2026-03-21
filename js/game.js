@@ -1,10 +1,13 @@
+const MAX_ADS_PER_DAY = 5;
+
 window.Game = {
     map: null, markers: {}, routeLines: [], carMarker: null,
     state: {
-        coins: 1500, gas: 0, food: 100, wake: 100, hp: 100,
+        coins: 1500, gas: 0, food: 100, wake: 100, hp: 100, rating: 0, adsWatched: 0,
         car: null, diff: null, currentCity: null, history: [], collected: [], discovered: [],
         isMoving: false, hotelPaid: false, excPaid: false,
-        driveMode: null, travelData: null, qteActive: false
+        driveMode: null, travelData: null, qteActive: false,
+        newMedalCity: null // Для подсветки нового города в альбоме
     },
 
     init: async function() {
@@ -20,9 +23,24 @@ window.Game = {
         L.control.zoom({position: 'topright'}).addTo(this.map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
 
+        this.checkDailyLimits();
         this.renderMap();
         this.bindEvents();
         document.getElementById('difficulty-modal').style.display = 'flex';
+    },
+
+    checkDailyLimits: function() {
+        let last = localStorage.getItem('rr_daily');
+        let today = new Date().toDateString();
+        if (last !== today) {
+            this.state.coins += 1200;
+            this.state.adsWatched = 0; // Сбрасываем лимит рекламы
+            localStorage.setItem('rr_daily', today);
+            localStorage.setItem('rr_ads', 0);
+            this.toast("Ежедневный бонус: +1200 монет!");
+        } else {
+            this.state.adsWatched = parseInt(localStorage.getItem('rr_ads') || 0);
+        }
     },
 
     selectDifficulty: function(diff) {
@@ -56,7 +74,6 @@ window.Game = {
             let tierClass = c.tier === 1 ? 'marker-tier-1' : (c.tier === 2 ? 'marker-tier-2' : 'marker-tier-3');
             if (isHidden) tierClass += ' hidden-tier';
             
-            // Вставляем картинку города на карту вместо точки!
             let cityImgSrc = c.id === "moscow" ? "assets/cities/moscow.png" : `assets/cities/tier${c.tier}.png`;
             
             let icon = L.divIcon({ 
@@ -83,7 +100,6 @@ window.Game = {
         this.state.history.push(city.id);
         this.updateMarkers();
         
-        // Вставляем картинку выбранной машины на карту!
         let carIcon = L.divIcon({className: 'marker-car', html: `<img src="assets/cars/${this.state.car.img}" class="driving-car-icon">`});
         this.carMarker = L.marker(city.coords, {icon: carIcon}).addTo(this.map);
 
@@ -172,12 +188,12 @@ window.Game = {
             td.kmPassedTotal += tickKm;
             document.getElementById('hud-dist').innerText = Math.round(td.kmPassedTotal);
 
-            // Траты ресурсов с защитой от отрицательных значений
             let wakeDrain = (tickKm / 700) * 100;
             let foodDrain = (tickKm / 700) * 100 * (this.state.car.id !== "bike" ? 1 : 2);
             let gasDrain = this.state.car.id !== "bike" ? (this.state.car.cons / 100) * tickKm * this.state.driveMode.gasMult : 0;
             let hpDrain = (tickKm / 100) * this.state.car.hpLoss;
 
+            // Жестко блокируем отрицательные значения
             this.state.wake = Math.max(0, this.state.wake - wakeDrain);
             this.state.food = Math.max(0, this.state.food - foodDrain);
             this.state.gas = Math.max(0, this.state.gas - gasDrain);
@@ -185,30 +201,33 @@ window.Game = {
 
             this.updateTopUI();
 
-            // Проверка критических состояний (Game Over)
+            // ЭВАКУАТОР ПРИ ПОЛНОМ ОБСЫХАНИИ (Логика Ближайшего Города)
             if (this.state.gas <= 0 && this.state.car.id !== "bike") {
                 clearInterval(this.animationInterval);
                 this.state.isMoving = false;
-                this.showConfirm("Бак пуст!", "Вы заглохли на трассе. Вызвать эвакуатор за 1000 монет?", () => {
-                    if (this.state.coins >= 1000) {
-                        this.state.coins -= 1000; 
-                        this.state.gas = this.state.car.tank * 0.5;
-                        this.updateTopUI(); 
-                        this.resumeTravel();
+                
+                let adLimitStr = `(Осталось ${MAX_ADS_PER_DAY - this.state.adsWatched} вызовов на сегодня)`;
+                
+                this.showConfirm("БАК ПУСТ!", `Вы заглохли на трассе. Вызвать эвакуатор до ближайшего города за просмотр рекламы? ${adLimitStr}`, () => {
+                    if (this.state.adsWatched < MAX_ADS_PER_DAY) {
+                        this.watchAd(() => {
+                            this.teleportToNearestCity(pos, td.line);
+                        });
                     } else {
-                        this.toast("Денег нет! Игра окончена."); 
-                        setTimeout(() => window.location.reload(), 2000);
+                        this.toast("Лимит рекламы исчерпан. Вы застряли на трассе. Игра окончена!");
+                        setTimeout(() => window.location.reload(), 3000);
                     }
                 });
                 return;
             }
 
-            // ИНТЕРАКТИВ (QTE НА ТРАССЕ)
-            if (Math.random() < 0.005 && !this.state.qteActive) {
-                this.spawnQTE();
+            // Штраф за отсутствие сна (Темнеет в глазах)
+            if (this.state.wake <= 0) {
+                // Если едем без сна, скорость падает, игрок ползет как черепаха
+                td.stepInc = (td.coords.length / totalTicks) * 0.2; 
             }
 
-            // СЮЖЕТНЫЕ СОБЫТИЯ
+            if (Math.random() < 0.005 && !this.state.qteActive) this.spawnQTE();
             if (Math.random() < 0.001 && !this.state.qteActive) {
                 clearInterval(this.animationInterval);
                 this.state.isMoving = false;
@@ -216,7 +235,6 @@ window.Game = {
                 return;
             }
 
-            // РАДАР ГОРОДОВ
             if (this.state.driveMode.radMult > 0) {
                 for (let c of Data.cities) {
                     if (c.id !== td.city.id && c.id !== this.state.currentCity.id && !this.state.history.includes(c.id)) {
@@ -239,19 +257,48 @@ window.Game = {
         }, 40);
     },
 
+    // ЛОГИКА ЭВАКУАТОРОВ И РЕКЛАМЫ
+    watchAd: function(onSuccess) {
+        this.state.adsWatched++;
+        localStorage.setItem('rr_ads', this.state.adsWatched);
+        
+        // Симуляция загрузки рекламы (в релизе тут будет вызов VKBridge)
+        this.toast("Смотрим рекламу спонсора...");
+        setTimeout(() => {
+            onSuccess();
+        }, 2000);
+    },
+
+    teleportToNearestCity: function(currentPos, currentLine) {
+        let minDist = Infinity;
+        let closestCity = null;
+        
+        Data.cities.forEach(c => {
+            let dist = this.map.distance(currentPos, c.coords);
+            if (dist < minDist) { minDist = dist; closestCity = c; }
+        });
+
+        this.toast(`Вас отбуксировали в ближайший город: ${closestCity.name}`);
+        this.map.removeLayer(currentLine); // Убираем недорисованную линию
+        
+        this.carMarker.setLatLng(closestCity.coords);
+        this.map.panTo(closestCity.coords);
+        
+        this.state.gas = 2; // Чуть-чуть бензина, чтобы интерфейс работал
+        this.finishTravel(closestCity, currentLine); // Открываем город
+    },
+
     spawnQTE: function() {
         this.state.qteActive = true;
         let types = [
             { id: 'camera', icon: 'fa-camera', color: '#F44336', text: 'КАМЕРА!', penalty: {coins: 250}, msgFail: "Вспышка! Штраф -250 монет." },
             { id: 'hole', icon: 'fa-triangle-exclamation', color: '#F44336', text: 'ЯМА! ЖМИ ЧТОБЫ ОБЪЕХАТЬ!', penalty: {hp: 15}, msgFail: "Удар подвески! Прочность -15%." },
-            { id: 'photo', icon: 'fa-image', color: '#4CAF50', text: 'КРАСИВЫЙ ВИД! ЖМИ!', bonus: {coins: 300}, msgSuccess: "Отличный кадр! Донат +300 монет." }
+            { id: 'photo', icon: 'fa-image', color: '#4CAF50', text: 'КРАСИВЫЙ ВИД! ЖМИ!', bonus: {coins: 300, rating: 5}, msgSuccess: "Отличный кадр! +5 Очков Блогера и донат." }
         ];
         
         let qte = types[Math.floor(Math.random() * types.length)];
         let layer = document.getElementById('qte-layer');
-        let btn = document.getElementById('qte-btn');
         
-        // КРАСНЫЙ ВОСКЛИЦАТЕЛЬНЫЙ ЗНАК С ИНСТРУКЦИЕЙ
         layer.innerHTML = `
             <div class="qte-container">
                 <button id="qte-btn" style="font-size: 50px; padding: 20px; border-radius: 50%; width: 120px; height: 120px; border: 5px solid #fff; cursor: pointer; box-shadow: 0 0 30px rgba(0,0,0,0.9); animation: pulse 0.5s infinite alternate; background: ${qte.color}; color: #fff;">
@@ -278,7 +325,9 @@ window.Game = {
                 btnOk.className = 'btn-action'; btnOk.innerText = "ОТЛИЧНО";
                 btnOk.onclick = () => {
                     this.state.coins += qte.bonus.coins; 
+                    this.state.rating += qte.bonus.rating; // НАЧИСЛЯЕМ ОЧКИ БЛОГЕРА
                     this.playFloatingText(`+${qte.bonus.coins} 🪙`, true);
+                    this.playFloatingText(`+${qte.bonus.rating} 📸`, true);
                     this.updateTopUI();
                     document.getElementById('event-modal').style.display = 'none';
                 };
@@ -429,7 +478,7 @@ window.Game = {
         this.state.history.push(city.id);
         document.getElementById('travel-hud').style.display = 'none';
         
-        line.setStyle({color: '#555', weight: 3, dashArray: '5, 10', opacity: 1});
+        if (line) line.setStyle({color: '#555', weight: 3, dashArray: '5, 10', opacity: 1});
         this.updateMarkers();
         this.updateTopUI();
         
@@ -464,6 +513,22 @@ window.Game = {
         } else {
             document.getElementById('hotel-hint').innerText = "Сон в этой машине не восстанавливает бодрость.";
         }
+
+        // Реклама в городе
+        let btnAd = document.getElementById('btn-city-ad');
+        btnAd.innerText = `РЕКЛАМА (+500 🪙) [${MAX_ADS_PER_DAY - this.state.adsWatched} шт]`;
+        btnAd.onclick = () => {
+            if (this.state.adsWatched < MAX_ADS_PER_DAY) {
+                this.watchAd(() => {
+                    this.state.coins += 500;
+                    this.playFloatingText("+500 🪙", true);
+                    this.updateTopUI();
+                    btnAd.innerText = `РЕКЛАМА (+500 🪙) [${MAX_ADS_PER_DAY - this.state.adsWatched} шт]`;
+                });
+            } else {
+                this.toast("Лимит рекламы на сегодня исчерпан!");
+            }
+        };
 
         document.getElementById('btn-leave-city').style.display = 'block';
         this.renderCityShop(city);
@@ -537,13 +602,12 @@ window.Game = {
         document.getElementById('city-shop').innerHTML = html;
     },
 
-    // АНИМАЦИИ ПОКУПОК (Вылетающая картинка и летящие цифры)
+    // АНИМАЦИИ ПОКУПОК
     buyItem: function(type, price, amount, imgSrc) {
         if (this.state.coins < price) { this.toast("Не хватает монет!"); return; }
         this.state.coins -= price;
 
         if (imgSrc) {
-            // Эффект приближения картинки
             let animImg = document.createElement('img');
             animImg.src = imgSrc;
             animImg.className = 'zoom-purchase-img';
@@ -551,13 +615,12 @@ window.Game = {
             setTimeout(() => animImg.remove(), 1500);
         }
 
-        // Летящий минус монеты
         this.playFloatingText(`-${price} 🪙`, false);
 
         if (type === 'hotel') { this.state.wake = Math.min(100, this.state.wake + amount); this.state.hotelPaid = true; } 
         else if (type === 'food') { this.state.food = Math.min(100, this.state.food + amount); } 
         else if (type === 'gas') { this.state.gas += amount; } 
-        else if (type === 'hp') { this.state.hp += amount; } 
+        else if (type === 'hp') { this.state.hp = Math.min(100, this.state.hp + amount); } 
 
         this.updateTopUI();
         this.checkCityCompletion();
@@ -574,7 +637,7 @@ window.Game = {
         setTimeout(() => el.remove(), 1500);
     },
 
-    // ЭФФЕКТ ФЕЙЕРВЕРКА
+    // ЭФФЕКТ ФЕЙЕРВЕРКА (Конфетти)
     playFireworks: function() {
         for (let i = 0; i < 50; i++) {
             let conf = document.createElement('div');
@@ -607,11 +670,13 @@ window.Game = {
                 document.getElementById('quest-modal').style.display = 'none';
                 if(i === q.right) { 
                     let reward = Data.prices[this.state.currentCity.tier].quizReward;
-                    this.state.coins += reward; 
+                    this.state.coins += reward;
+                    this.state.rating += 20; // Очки блогера за квест
                     this.playFloatingText(`+${reward} 🪙`, true);
+                    this.playFloatingText(`+20 📸`, true);
                     this.playFireworks();
                 } else { 
-                    this.toast("Неверный ответ! Опыта нет."); 
+                    this.toast("Неверный ответ! Вы ничего не заработали."); 
                 }
                 
                 this.state.excPaid = true;
@@ -627,7 +692,11 @@ window.Game = {
     checkCityCompletion: function() {
         if (this.state.hotelPaid && this.state.excPaid && !this.state.collected.includes(this.state.currentCity.id)) {
             this.state.collected.push(this.state.currentCity.id);
-            this.toast("Условия выполнены! Карточка добавлена в Альбом!");
+            this.state.newMedalCity = this.state.currentCity.id; // Запоминаем для подсветки в альбоме
+            
+            this.toast("Отлично! Город добавлен в Альбом!");
+            document.getElementById('btn-album').classList.add('btn-glow'); // Заставляем мигать кнопку Альбома
+            
             this.updateMarkers();
         }
     },
@@ -638,7 +707,7 @@ window.Game = {
                 this.state.wake = Math.min(100, this.state.wake + this.state.car.sleepBonus);
                 this.toast(`Ночевка в машине (+${this.state.car.sleepBonus}% бодрости).`);
             } else {
-                this.toast("Сон в этой машине не восстанавливает силы. Едем дальше.");
+                this.toast("Вы не отдохнули. Будьте осторожны на трассе!");
             }
         }
         this.updateTopUI();
@@ -648,6 +717,7 @@ window.Game = {
     // ПУЛЬСАЦИЯ ПРИ < 30%
     updateTopUI: function() {
         document.getElementById('val-coins').innerText = Math.round(this.state.coins);
+        document.getElementById('val-rating').innerText = Math.round(this.state.rating);
         
         let els = {
             gas: { val: this.state.gas, max: this.state.car ? this.state.car.tank : 100, node: document.getElementById('val-gas').parentNode },
@@ -661,7 +731,6 @@ window.Game = {
             let displayNode = el.node.querySelector('span');
             displayNode.innerText = Math.round(el.val);
             
-            // Если меньше 30% от максимума - включаем пульсацию
             if ((el.val / el.max) < 0.3) {
                 el.node.classList.add('danger-pulse');
             } else {
@@ -680,6 +749,9 @@ window.Game = {
     },
 
     openAlbum: function() {
+        // Убираем свечение кнопки при открытии
+        document.getElementById('btn-album').classList.remove('btn-glow');
+
         let grid = document.getElementById('album-grid'); grid.innerHTML = '';
         let collectedCities = Data.cities.filter(c => this.state.collected.includes(c.id));
         
@@ -687,12 +759,15 @@ window.Game = {
             grid.innerHTML = "<p style='color:#aaa;'>Альбом пока пуст. Оплачивайте отель и экскурсии в городах.</p>";
         } else {
             collectedCities.forEach(c => {
+                let isNew = (c.id === this.state.newMedalCity);
                 grid.innerHTML += `
-                    <div class="album-card collected">
+                    <div class="album-card collected ${isNew ? 'new-medal' : ''}">
                         <i class="fa-solid fa-medal"></i>
                         <div style="font-weight:bold; font-size:13px;">${c.name}</div>
                     </div>`;
             });
+            // Сбрасываем "новизну" после просмотра
+            this.state.newMedalCity = null; 
         }
         document.getElementById('album-modal').style.display = 'flex';
     },
