@@ -3,18 +3,38 @@
 body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display: flex; flex-direction: column; background-color: var(--bg-dark); color: var(--text-white); overflow: hidden; }
 .leaflet-control-attribution { display: none !important; }
 
+/* ШАПКА И РЕСУРСЫ */
 .header { background: var(--header-bg); height: var(--header-h); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255, 0.05); z-index: 1000; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
 .logo { font-family: 'Russo One', sans-serif; color: var(--accent); font-size: 22px; margin-right: 15px; }
 .btn-icon { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; font-family: 'Montserrat', sans-serif; }
 .btn-icon:hover { background: var(--accent); }
 .header-center { display: flex; gap: 20px; font-weight: 800; font-size: 15px; background: rgba(0,0,0,0.5); padding: 10px 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
-.res-item { display: flex; align-items: center; gap: 8px; text-shadow: 1px 1px 2px #000; }
+.res-item { display: flex; align-items: center; gap: 8px; text-shadow: 1px 1px 2px #000; transition: color 0.3s; }
 .player-profile { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; }
 .player-profile img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; }
 
+/* ПУЛЬСАЦИЯ ПРИ < 30% РЕСУРСОВ */
+.danger-pulse { animation: dangerPulse 0.8s infinite alternate !important; color: #F44336 !important; text-shadow: 0 0 10px #F44336 !important; }
+@keyframes dangerPulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.1); opacity: 0.7; } }
+
+/* ЛЭЙАУТ И КАРТА */
 .main-container { display: flex; flex: 1; position: relative; height: calc(100vh - var(--header-h)); }
 #map { flex: 1; height: 100%; background: #e5e3df; z-index: 1; }
 
+/* ЖИВЫЕ ИКОНКИ НА КАРТЕ */
+.custom-map-icon { width: 36px; height: 36px; border-radius: 50%; border: 3px solid #fff; object-fit: cover; box-shadow: 0 0 15px rgba(0,0,0,0.8); transition: transform 0.3s; }
+.custom-map-icon:hover { transform: scale(1.2); z-index: 2000; }
+.marker-tier-1 .custom-map-icon { border-color: #F44336; }
+.marker-tier-2 .custom-map-icon { border-color: #FFEB3B; }
+.marker-tier-3 .custom-map-icon { border-color: #9C27B0; }
+.marker-collected .custom-map-icon { border-color: #4CAF50; box-shadow: 0 0 15px #4CAF50; }
+.hidden-tier { opacity: 0; pointer-events: none; } 
+.marker-discovered { opacity: 1 !important; pointer-events: auto !important; }
+
+/* ИКОНКА ВАШЕЙ МАШИНЫ В ПУТИ */
+.driving-car-icon { width: 50px; height: auto; object-fit: contain; filter: drop-shadow(0 8px 6px rgba(0,0,0,0.6)); z-index: 3000 !important; margin-left: -25px !important; margin-top: -25px !important; }
+
+/* ХАБ ГОРОДА И МАГАЗИН */
 .city-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 500; display: flex; justify-content: flex-start; align-items: flex-start; padding: 20px; pointer-events: auto; }
 .city-panel { background: rgba(28, 28, 28, 0.95); width: 420px; max-height: 100%; border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); border: 1px solid #444; overflow-y: auto; backdrop-filter: blur(10px); }
 .city-panel::-webkit-scrollbar { width: 6px; }
@@ -36,7 +56,6 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .btn-shop.purchased { border-color: #4CAF50; background: rgba(76, 175, 80, 0.1); color: #4CAF50; }
 
 .city-footer { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-
 .btn-action { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; transition: 0.2s; font-family: 'Montserrat', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
 .btn-action:hover { background: #e64a19; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 87, 34, 0.4); }
 .btn-action:active { transform: translateY(0); }
@@ -45,6 +64,7 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .btn-ad { background: #2e7d32; }
 .btn-ad:hover { background: #1b5e20; }
 
+/* HUD и МОДАЛКИ */
 .travel-hud { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 15px 30px; border-radius: 30px; border: 2px solid var(--accent); z-index: 400; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.7); backdrop-filter: blur(5px); }
 .hud-title { font-size: 18px; font-weight: 900; color: #fff; margin-bottom: 5px; }
 .hud-stats { font-size: 12px; color: #aaa; }
@@ -62,36 +82,35 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .album-card { background: #1a1a1a; border: 2px solid #4CAF50; border-radius: 12px; padding: 15px 10px; text-align: center; box-shadow: 0 0 10px rgba(76, 175, 80, 0.2); }
 .album-card i { font-size: 30px; margin-bottom: 10px; color: #4CAF50; }
 
-.map-pin { background: transparent; border: none; text-align: center; }
-.map-pin i { font-size: 28px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); transition: 0.2s; }
-.marker-tier-1 i { color: #F44336; }
-.marker-tier-2 i { color: #FFEB3B; }
-.marker-tier-3 i { color: #9C27B0; }
-.marker-collected i { color: #4CAF50; }
-.hidden-tier { opacity: 0; pointer-events: none; } 
-.marker-discovered { opacity: 1 !important; pointer-events: auto !important; }
-
-.marker-car { background: #fff; color: #000; border: 2px solid #000; border-radius: 50%; width: 26px !important; height: 26px !important; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); z-index: 1000 !important; margin-left: -13px !important; margin-top: -13px !important; font-size: 12px;}
-
 .toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .toast { background: var(--accent); color: #fff; padding: 15px 25px; border-radius: 8px; font-weight: 800; font-size: 14px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); animation: fadein 0.3s, fadeout 0.3s 3.7s; text-align: center; }
 @keyframes fadein { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeout { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
 
-/* === ПОЛНАЯ ОТМЕНА РАМОК ДЛЯ PNG КАРТИНОК === */
+/* КАРТИНКИ (БЕЗ РАМОК И ФОНОВ) */
 .city-img-container { width: 100%; height: 160px; text-align: center; margin-bottom: 15px; background: transparent !important; border: none !important; }
 .city-img-container img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.5)); }
-
 .car-img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 10px; background: transparent !important; border: none !important; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.6)); }
-
 .event-image { width: 100%; height: 160px; object-fit: contain; margin-bottom: 10px; background: transparent !important; border: none !important; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.4)); }
-
 .guide-image { width: 120px; height: 120px; object-fit: contain; margin: 0 auto; display: block; background: transparent !important; border: none !important; filter: drop-shadow(0 0 15px rgba(255,215,0,0.4)); }
-
 .btn-shop-img { width: 100%; height: 70px; object-fit: contain; background: transparent !important; border: none !important; margin-bottom: 5px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); }
 .btn-shop-content { padding: 4px; }
 
-@keyframes pulse { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
+/* === АНИМАЦИИ ПОКУПОК И ЭФФЕКТОВ (JUICE) === */
+.zoom-purchase-img { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); width: 300px; z-index: 10001; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.9)); animation: zoomInOut 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: none; }
+@keyframes zoomInOut { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+
+.floating-text { position: fixed; font-weight: 900; font-size: 35px; color: #F44336; z-index: 10002; text-shadow: 0 4px 10px rgba(0,0,0,0.8); font-family: 'Russo One', sans-serif; pointer-events: none; animation: floatUp 1.5s forwards; }
+.floating-text.positive { color: #4CAF50; }
+@keyframes floatUp { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-100px) scale(1.5); opacity: 0; } }
+
+.confetti { position: absolute; width: 10px; height: 10px; z-index: 10000; animation: fall 3s linear forwards; pointer-events: none; }
+@keyframes fall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+
+/* Интерактив (QTE Яма/Камера) */
+.qte-container { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; }
+.qte-warning { font-family: 'Russo One', sans-serif; font-size: 24px; color: #fff; text-shadow: 0 4px 10px rgba(0,0,0,0.9); animation: pulseQte 0.5s infinite alternate; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 12px;}
+@keyframes pulseQte { 0% { transform: scale(1); } 100% { transform: scale(1.1); color: #FFEB3B; } }
 
 @media screen and (max-width: 900px) {
     :root { --header-h: auto; }
@@ -99,10 +118,8 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
     .header-left { width: 100%; display: flex; justify-content: space-between; align-items: center; }
     .header-right { display: none; }
     .header-center { display: flex !important; width: 100%; justify-content: center; flex-wrap: wrap; gap: 12px; padding: 10px; font-size: 13px; }
-    
     .city-overlay { padding: 0; background: rgba(0,0,0,0.7); align-items: flex-end; }
     .city-panel { width: 100%; max-height: 85vh; border-radius: 20px 20px 0 0; border: none; border-top: 2px solid #444; padding: 20px 15px 40px 15px; }
-    
     .grid-3 { grid-template-columns: 1fr; max-height: 60vh; overflow-y: auto; padding-right: 5px; }
     .leaflet-bottom.leaflet-right { bottom: 20px !important; }
 }

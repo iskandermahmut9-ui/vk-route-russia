@@ -20,20 +20,9 @@ window.Game = {
         L.control.zoom({position: 'topright'}).addTo(this.map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
 
-        this.checkDailyBonus();
         this.renderMap();
         this.bindEvents();
         document.getElementById('difficulty-modal').style.display = 'flex';
-    },
-
-    checkDailyBonus: function() {
-        let last = localStorage.getItem('rr_daily');
-        let today = new Date().toDateString();
-        if (last !== today) {
-            this.state.coins += 1200;
-            localStorage.setItem('rr_daily', today);
-            this.toast("Ежедневный бонус: +1200 монет!");
-        }
     },
 
     selectDifficulty: function(diff) {
@@ -67,7 +56,14 @@ window.Game = {
             let tierClass = c.tier === 1 ? 'marker-tier-1' : (c.tier === 2 ? 'marker-tier-2' : 'marker-tier-3');
             if (isHidden) tierClass += ' hidden-tier';
             
-            let icon = L.divIcon({ className: `map-pin ${tierClass}`, html: '<i class="fa-solid fa-location-dot"></i>', iconSize: [30, 30], iconAnchor: [15,30] });
+            // Вставляем картинку города на карту вместо точки!
+            let cityImgSrc = c.id === "moscow" ? "assets/cities/moscow.png" : `assets/cities/tier${c.tier}.png`;
+            
+            let icon = L.divIcon({ 
+                className: `map-pin ${tierClass}`, 
+                html: `<img src="${cityImgSrc}" class="custom-map-icon">`, 
+                iconSize: [36, 36], iconAnchor: [18, 18] 
+            });
             let m = L.marker(c.coords, {icon: icon}).addTo(this.map);
             this.markers[c.id] = m;
 
@@ -87,7 +83,8 @@ window.Game = {
         this.state.history.push(city.id);
         this.updateMarkers();
         
-        let carIcon = L.divIcon({className: 'marker-car', html: '<i class="fa-solid fa-car-side"></i>'});
+        // Вставляем картинку выбранной машины на карту!
+        let carIcon = L.divIcon({className: 'marker-car', html: `<img src="assets/cars/${this.state.car.img}" class="driving-car-icon">`});
         this.carMarker = L.marker(city.coords, {icon: carIcon}).addTo(this.map);
 
         document.getElementById('city-overlay').style.display = 'none';
@@ -155,7 +152,6 @@ window.Game = {
 
         this.animationInterval = setInterval(() => {
             td.currentStep += td.stepInc;
-
             if (td.currentStep >= td.coords.length - 1) td.currentStep = td.coords.length - 1;
 
             let idx = Math.floor(td.currentStep);
@@ -176,25 +172,43 @@ window.Game = {
             td.kmPassedTotal += tickKm;
             document.getElementById('hud-dist').innerText = Math.round(td.kmPassedTotal);
 
-            // Траты ресурсов
+            // Траты ресурсов с защитой от отрицательных значений
             let wakeDrain = (tickKm / 700) * 100;
             let foodDrain = (tickKm / 700) * 100 * (this.state.car.id !== "bike" ? 1 : 2);
             let gasDrain = this.state.car.id !== "bike" ? (this.state.car.cons / 100) * tickKm * this.state.driveMode.gasMult : 0;
             let hpDrain = (tickKm / 100) * this.state.car.hpLoss;
 
-            this.state.wake -= wakeDrain;
-            this.state.food -= foodDrain;
-            this.state.gas -= gasDrain;
-            this.state.hp -= hpDrain;
+            this.state.wake = Math.max(0, this.state.wake - wakeDrain);
+            this.state.food = Math.max(0, this.state.food - foodDrain);
+            this.state.gas = Math.max(0, this.state.gas - gasDrain);
+            this.state.hp = Math.max(0, this.state.hp - hpDrain);
 
             this.updateTopUI();
+
+            // Проверка критических состояний (Game Over)
+            if (this.state.gas <= 0 && this.state.car.id !== "bike") {
+                clearInterval(this.animationInterval);
+                this.state.isMoving = false;
+                this.showConfirm("Бак пуст!", "Вы заглохли на трассе. Вызвать эвакуатор за 1000 монет?", () => {
+                    if (this.state.coins >= 1000) {
+                        this.state.coins -= 1000; 
+                        this.state.gas = this.state.car.tank * 0.5;
+                        this.updateTopUI(); 
+                        this.resumeTravel();
+                    } else {
+                        this.toast("Денег нет! Игра окончена."); 
+                        setTimeout(() => window.location.reload(), 2000);
+                    }
+                });
+                return;
+            }
 
             // ИНТЕРАКТИВ (QTE НА ТРАССЕ)
             if (Math.random() < 0.005 && !this.state.qteActive) {
                 this.spawnQTE();
             }
 
-            // ПРОВЕРКИ СЮЖЕТА 
+            // СЮЖЕТНЫЕ СОБЫТИЯ
             if (Math.random() < 0.001 && !this.state.qteActive) {
                 clearInterval(this.animationInterval);
                 this.state.isMoving = false;
@@ -202,6 +216,7 @@ window.Game = {
                 return;
             }
 
+            // РАДАР ГОРОДОВ
             if (this.state.driveMode.radMult > 0) {
                 for (let c of Data.cities) {
                     if (c.id !== td.city.id && c.id !== this.state.currentCity.id && !this.state.history.includes(c.id)) {
@@ -219,35 +234,35 @@ window.Game = {
 
             if (td.currentStep >= td.coords.length - 1) {
                 clearInterval(this.animationInterval);
-                this.state.gas = Math.max(0, this.state.gas);
-                this.state.food = Math.max(0, this.state.food);
-                this.state.wake = Math.max(0, this.state.wake);
-                this.state.hp = Math.max(0, this.state.hp);
                 this.finishTravel(td.city, td.line);
             }
-
         }, 40);
     },
 
     spawnQTE: function() {
         this.state.qteActive = true;
         let types = [
-            { id: 'camera', icon: 'fa-camera', color: '#F44336', text: 'КАМЕРА!', penalty: {coins: -250}, msgFail: "Вспышка! Штраф -250 ₽." },
-            { id: 'hole', icon: 'fa-triangle-exclamation', color: '#212121', text: 'ЯМА!', penalty: {hp: -15}, msgFail: "Удар подвески! Прочность -15%." },
-            { id: 'photo', icon: 'fa-image', color: '#4CAF50', text: 'ФОТО!', bonus: {coins: 300}, msgSuccess: "Отличный кадр! Донат +300 ₽." }
+            { id: 'camera', icon: 'fa-camera', color: '#F44336', text: 'КАМЕРА!', penalty: {coins: 250}, msgFail: "Вспышка! Штраф -250 монет." },
+            { id: 'hole', icon: 'fa-triangle-exclamation', color: '#F44336', text: 'ЯМА! ЖМИ ЧТОБЫ ОБЪЕХАТЬ!', penalty: {hp: 15}, msgFail: "Удар подвески! Прочность -15%." },
+            { id: 'photo', icon: 'fa-image', color: '#4CAF50', text: 'КРАСИВЫЙ ВИД! ЖМИ!', bonus: {coins: 300}, msgSuccess: "Отличный кадр! Донат +300 монет." }
         ];
         
         let qte = types[Math.floor(Math.random() * types.length)];
         let layer = document.getElementById('qte-layer');
         let btn = document.getElementById('qte-btn');
         
-        btn.innerHTML = `<i class="fa-solid ${qte.icon}"></i><br><span style="font-size:12px;">${qte.text}</span>`;
-        btn.style.background = qte.color;
+        // КРАСНЫЙ ВОСКЛИЦАТЕЛЬНЫЙ ЗНАК С ИНСТРУКЦИЕЙ
+        layer.innerHTML = `
+            <div class="qte-container">
+                <button id="qte-btn" style="font-size: 50px; padding: 20px; border-radius: 50%; width: 120px; height: 120px; border: 5px solid #fff; cursor: pointer; box-shadow: 0 0 30px rgba(0,0,0,0.9); animation: pulse 0.5s infinite alternate; background: ${qte.color}; color: #fff;">
+                    <i class="fa-solid ${qte.icon}"></i>
+                </button>
+                <div class="qte-warning">${qte.text}</div>
+            </div>`;
         layer.style.display = 'block';
 
         let clicked = false;
-        
-        btn.onclick = () => {
+        document.getElementById('qte-btn').onclick = () => {
             clicked = true;
             layer.style.display = 'none';
             this.state.qteActive = false;
@@ -262,7 +277,9 @@ window.Game = {
                 let btnOk = document.createElement('button');
                 btnOk.className = 'btn-action'; btnOk.innerText = "ОТЛИЧНО";
                 btnOk.onclick = () => {
-                    this.state.coins += qte.bonus.coins; this.updateTopUI();
+                    this.state.coins += qte.bonus.coins; 
+                    this.playFloatingText(`+${qte.bonus.coins} 🪙`, true);
+                    this.updateTopUI();
                     document.getElementById('event-modal').style.display = 'none';
                 };
                 document.getElementById('event-actions').innerHTML = '';
@@ -278,8 +295,8 @@ window.Game = {
                 layer.style.display = 'none';
                 this.state.qteActive = false;
                 if (qte.penalty) {
-                    if(qte.penalty.coins) this.state.coins += qte.penalty.coins;
-                    if(qte.penalty.hp) this.state.hp += qte.penalty.hp;
+                    if(qte.penalty.coins) this.state.coins = Math.max(0, this.state.coins - qte.penalty.coins);
+                    if(qte.penalty.hp) this.state.hp = Math.max(0, this.state.hp - qte.penalty.hp);
                     this.updateTopUI();
                     
                     document.getElementById('event-img').src = `assets/events/${qte.id}.png`;
@@ -301,7 +318,7 @@ window.Game = {
         let ev = Data.events[Math.floor(Math.random() * Data.events.length)];
         
         if (ev.id === "police") {
-            if (this.state.driveMode.speed === 140) ev.choices[0].msg = "Штраф за превышение: -500 ₽!";
+            if (this.state.driveMode.speed === 140) ev.choices[0].msg = "Штраф за превышение: -500 монет!";
             else ev.choices[0].msg = "Счастливого пути. Вы потеряли немного времени.";
         }
 
@@ -317,23 +334,29 @@ window.Game = {
             btn.innerText = choice.text;
             
             btn.onclick = () => {
-                if (this.state.coins < choice.cost) {
-                    this.toast("У вас нет столько денег!"); return;
+                if (choice.cost > 0 && this.state.coins < choice.cost) {
+                    this.toast("Не хватает монет!"); return;
                 }
-                this.state.coins -= choice.cost;
+                if (choice.cost > 0) {
+                    this.state.coins -= choice.cost;
+                    this.playFloatingText(`-${choice.cost} 🪙`, false);
+                }
 
                 if (choice.action === "hp") this.state.hp = Math.max(0, Math.min(100, this.state.hp + choice.val));
                 if (choice.action === "food") this.state.food = Math.max(0, Math.min(100, this.state.food + choice.val));
-                if (choice.action === "coins") this.state.coins += choice.val;
+                if (choice.action === "coins") { 
+                    this.state.coins += choice.val; 
+                    if(choice.val > 0) this.playFloatingText(`+${choice.val} 🪙`, true);
+                }
                 
-                if (choice.action === "mixed_girl") { this.state.wake = Math.min(100, this.state.wake + 20); this.state.food -= 20; }
-                if (choice.action === "mixed_road") { this.state.wake -= 20; this.state.food -= 20; }
-                if (choice.action === "mixed_grandpa") { this.state.coins += 200; this.state.gas -= 5; }
+                if (choice.action === "mixed_girl") { this.state.wake = Math.min(100, this.state.wake + 20); this.state.food = Math.max(0, this.state.food - 20); }
+                if (choice.action === "mixed_road") { this.state.wake = Math.max(0, this.state.wake - 20); this.state.food = Math.max(0, this.state.food - 20); }
+                if (choice.action === "mixed_grandpa") { this.state.coins += 200; this.state.gas = Math.max(0, this.state.gas - 5); this.playFloatingText(`+200 🪙`, true); }
                 if (choice.action === "mixed_cake") { this.state.food = 100; if(Math.random() > 0.5) this.state.wake = 0; }
-                if (choice.action === "police" && this.state.driveMode.speed === 140) { this.state.coins -= 500; }
+                if (choice.action === "police" && this.state.driveMode.speed === 140) { this.state.coins = Math.max(0, this.state.coins - 500); this.playFloatingText(`-500 🪙`, false); }
                 
                 if (choice.action === "secret") {
-                    this.state.food -= 20;
+                    this.state.food = Math.max(0, this.state.food - 20);
                     let hiddenCity = Data.cities.find(c => c.tier === 3 && !this.state.discovered.includes(c.id));
                     if (hiddenCity) {
                         this.state.discovered.push(hiddenCity.id);
@@ -453,30 +476,30 @@ window.Game = {
         html += `<div class="shop-category"><h4>🛏️ Ночлег</h4><div class="btn-group">`;
         if (p.hotel > 0) {
             let isFull = this.state.wake >= 100 || this.state.hotelPaid;
-            html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hotel}, 100)">
+            html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hotel}, 100, 'assets/ui/hotel.png')">
                 <img src="assets/ui/hotel.png" class="btn-shop-img">
-                <div class="btn-shop-content"><b>Гостиница</b><small>+100% бодрости</small><span class="price">${p.hotel} ₽</span></div></button>`;
+                <div class="btn-shop-content"><b>Гостиница</b><small>+100% бодрости</small><span class="price">${p.hotel} 🪙</span></div></button>`;
         }
         if (p.hostel > 0) {
             let isFull = this.state.wake >= 100 || this.state.hotelPaid;
-            html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hostel}, 80)">
+            html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hostel}, 80, 'assets/ui/hostel.png')">
                 <img src="assets/ui/hostel.png" class="btn-shop-img">
-                <div class="btn-shop-content"><b>Мотель</b><small>+80% бодрости</small><span class="price">${p.hostel} ₽</span></div></button>`;
+                <div class="btn-shop-content"><b>Мотель</b><small>+80% бодрости</small><span class="price">${p.hostel} 🪙</span></div></button>`;
         }
         html += `</div></div>`;
 
         html += `<div class="shop-category"><h4>🍔 Питание</h4><div class="btn-group">`;
         if (p.rest > 0) {
             let isFull = this.state.food >= 100;
-            html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.rest}, 100)">
+            html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.rest}, 100, 'assets/ui/rest.png')">
                 <img src="assets/ui/rest.png" class="btn-shop-img">
-                <div class="btn-shop-content"><b>Ресторан</b><small>+100% сытости</small><span class="price">${p.rest} ₽</span></div></button>`;
+                <div class="btn-shop-content"><b>Ресторан</b><small>+100% сытости</small><span class="price">${p.rest} 🪙</span></div></button>`;
         }
         if (p.fastfood > 0) {
             let isFull = this.state.food >= 100;
-            html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.fastfood}, 80)">
+            html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.fastfood}, 80, 'assets/ui/fastfood.png')">
                 <img src="assets/ui/fastfood.png" class="btn-shop-img">
-                <div class="btn-shop-content"><b>Столовая</b><small>+80% сытости</small><span class="price">${p.fastfood} ₽</span></div></button>`;
+                <div class="btn-shop-content"><b>Столовая</b><small>+80% сытости</small><span class="price">${p.fastfood} 🪙</span></div></button>`;
         }
         html += `</div></div>`;
 
@@ -484,11 +507,11 @@ window.Game = {
             let missingGas = Math.floor(this.state.car.tank - this.state.gas);
             let fullPrice = missingGas * p.gas;
             let tenPrice = 10 * p.gas;
-            html += `<div class="shop-category"><h4>⛽ АЗС (${p.gas} ₽/л)</h4><div class="btn-group">`;
-            html += `<button class="btn-shop" style="padding:10px !important" ${missingGas < 10 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${tenPrice}, 10)">
-                <b>+10 Литров</b><span class="price">${tenPrice} ₽</span></button>`;
-            html += `<button class="btn-shop" style="padding:10px !important" ${missingGas <= 0 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${fullPrice}, ${missingGas})">
-                <b>Полный бак</b><span class="price">${fullPrice} ₽</span></button>`;
+            html += `<div class="shop-category"><h4>⛽ АЗС (${p.gas} 🪙/л)</h4><div class="btn-group">`;
+            html += `<button class="btn-shop" style="padding:10px !important" ${missingGas < 10 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${tenPrice}, 10, null)">
+                <b>+10 Литров</b><span class="price">${tenPrice} 🪙</span></button>`;
+            html += `<button class="btn-shop" style="padding:10px !important" ${missingGas <= 0 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${fullPrice}, ${missingGas}, null)">
+                <b>Полный бак</b><span class="price">${fullPrice} 🪙</span></button>`;
             html += `</div></div>`;
         }
 
@@ -497,31 +520,79 @@ window.Game = {
             let fullPrice = missingHp * p.repair;
             let tenPrice = 10 * p.repair;
             html += `<div class="shop-category"><h4>🔧 Автосервис</h4><div class="btn-group">`;
-            html += `<button class="btn-shop" style="padding:10px !important" ${missingHp < 10 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${tenPrice}, 10)">
-                <b>+10% Ремонт</b><span class="price">${tenPrice} ₽</span></button>`;
-            html += `<button class="btn-shop" style="padding:10px !important" ${missingHp <= 0 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${fullPrice}, ${missingHp})">
-                <b>Починить всё</b><span class="price">${fullPrice} ₽</span></button>`;
+            html += `<button class="btn-shop" style="padding:10px !important" ${missingHp < 10 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${tenPrice}, 10, null)">
+                <b>+10% Ремонт</b><span class="price">${tenPrice} 🪙</span></button>`;
+            html += `<button class="btn-shop" style="padding:10px !important" ${missingHp <= 0 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${fullPrice}, ${missingHp}, null)">
+                <b>Починить всё</b><span class="price">${fullPrice} 🪙</span></button>`;
             html += `</div></div>`;
         }
 
         if (p.exc > 0) {
             html += `<div class="shop-category" style="border:none;"><h4>🎫 Культура</h4><div class="btn-group">`;
             html += `<button class="btn-shop ${this.state.excPaid ? 'purchased' : ''}" style="padding:10px !important" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.startExcursion(${p.exc})">
-                <b>Взять Экскурсию</b><small>Для Альбома</small><span class="price">${p.exc} ₽</span></button>`;
+                <b>Взять Экскурсию</b><small>Для Альбома</small><span class="price">${p.exc} 🪙</span></button>`;
             html += `</div></div>`;
         }
 
         document.getElementById('city-shop').innerHTML = html;
     },
 
-    // ЛОГИКА ЭКСКУРСИИ С ГИДОМ
+    // АНИМАЦИИ ПОКУПОК (Вылетающая картинка и летящие цифры)
+    buyItem: function(type, price, amount, imgSrc) {
+        if (this.state.coins < price) { this.toast("Не хватает монет!"); return; }
+        this.state.coins -= price;
+
+        if (imgSrc) {
+            // Эффект приближения картинки
+            let animImg = document.createElement('img');
+            animImg.src = imgSrc;
+            animImg.className = 'zoom-purchase-img';
+            document.body.appendChild(animImg);
+            setTimeout(() => animImg.remove(), 1500);
+        }
+
+        // Летящий минус монеты
+        this.playFloatingText(`-${price} 🪙`, false);
+
+        if (type === 'hotel') { this.state.wake = Math.min(100, this.state.wake + amount); this.state.hotelPaid = true; } 
+        else if (type === 'food') { this.state.food = Math.min(100, this.state.food + amount); } 
+        else if (type === 'gas') { this.state.gas += amount; } 
+        else if (type === 'hp') { this.state.hp += amount; } 
+
+        this.updateTopUI();
+        this.checkCityCompletion();
+        this.renderCityShop(this.state.currentCity);
+    },
+
+    playFloatingText: function(text, isPositive) {
+        let el = document.createElement('div');
+        el.className = `floating-text ${isPositive ? 'positive' : ''}`;
+        el.innerText = text;
+        el.style.top = '50%';
+        el.style.left = '50%';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1500);
+    },
+
+    // ЭФФЕКТ ФЕЙЕРВЕРКА
+    playFireworks: function() {
+        for (let i = 0; i < 50; i++) {
+            let conf = document.createElement('div');
+            conf.className = 'confetti';
+            conf.style.left = Math.random() * 100 + 'vw';
+            conf.style.background = ['#FFD700', '#FF5722', '#4CAF50', '#2196F3'][Math.floor(Math.random()*4)];
+            document.body.appendChild(conf);
+            setTimeout(() => conf.remove(), 3000);
+        }
+    },
+
     startExcursion: function(price) {
         if (this.state.coins < price) { this.toast("Не хватает монет!"); return; }
         
         this.state.coins -= price;
+        this.playFloatingText(`-${price} 🪙`, false);
         this.updateTopUI();
         
-        // Показываем гида
         let guideImg = Math.random() > 0.5 ? "guide_m.png" : "guide_f.png";
         document.getElementById('quest-guide-img').src = `assets/quests/${guideImg}`;
         document.getElementById('quest-city-name').innerText = this.state.currentCity.name;
@@ -537,7 +608,8 @@ window.Game = {
                 if(i === q.right) { 
                     let reward = Data.prices[this.state.currentCity.tier].quizReward;
                     this.state.coins += reward; 
-                    this.toast(`Верно! Вы заработали ${reward} монет.`); 
+                    this.playFloatingText(`+${reward} 🪙`, true);
+                    this.playFireworks();
                 } else { 
                     this.toast("Неверный ответ! Опыта нет."); 
                 }
@@ -550,20 +622,6 @@ window.Game = {
             ansDiv.appendChild(b);
         });
         document.getElementById('quest-modal').style.display = 'flex';
-    },
-
-    buyItem: function(type, price, amount) {
-        if (this.state.coins < price) { this.toast("Не хватает монет!"); return; }
-        this.state.coins -= price;
-
-        if (type === 'hotel') { this.state.wake = Math.min(100, this.state.wake + amount); this.state.hotelPaid = true; } 
-        else if (type === 'food') { this.state.food = Math.min(100, this.state.food + amount); } 
-        else if (type === 'gas') { this.state.gas += amount; } 
-        else if (type === 'hp') { this.state.hp += amount; } 
-
-        this.updateTopUI();
-        this.checkCityCompletion();
-        this.renderCityShop(this.state.currentCity);
     },
 
     checkCityCompletion: function() {
@@ -587,12 +645,29 @@ window.Game = {
         document.getElementById('city-overlay').style.display = 'none';
     },
 
+    // ПУЛЬСАЦИЯ ПРИ < 30%
     updateTopUI: function() {
         document.getElementById('val-coins').innerText = Math.round(this.state.coins);
-        document.getElementById('val-gas').innerText = Math.round(this.state.gas);
-        document.getElementById('val-food').innerText = Math.round(this.state.food);
-        document.getElementById('val-wake').innerText = Math.round(this.state.wake);
-        document.getElementById('val-hp').innerText = Math.round(this.state.hp);
+        
+        let els = {
+            gas: { val: this.state.gas, max: this.state.car ? this.state.car.tank : 100, node: document.getElementById('val-gas').parentNode },
+            food: { val: this.state.food, max: 100, node: document.getElementById('val-food').parentNode },
+            wake: { val: this.state.wake, max: 100, node: document.getElementById('val-wake').parentNode },
+            hp: { val: this.state.hp, max: 100, node: document.getElementById('val-hp').parentNode }
+        };
+
+        for (let key in els) {
+            let el = els[key];
+            let displayNode = el.node.querySelector('span');
+            displayNode.innerText = Math.round(el.val);
+            
+            // Если меньше 30% от максимума - включаем пульсацию
+            if ((el.val / el.max) < 0.3) {
+                el.node.classList.add('danger-pulse');
+            } else {
+                el.node.classList.remove('danger-pulse');
+            }
+        }
     },
 
     showConfirm: function(title, text, onYes) {
