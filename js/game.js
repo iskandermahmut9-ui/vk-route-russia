@@ -4,7 +4,7 @@ window.Game = {
         coins: 1500, gas: 0, food: 100, wake: 100, hp: 100,
         car: null, diff: null, currentCity: null, history: [], collected: [], discovered: [],
         isMoving: false, hotelPaid: false, excPaid: false,
-        driveMode: null, kmSinceEvent: 0, travelData: null
+        driveMode: null, travelData: null, qteActive: false
     },
 
     init: async function() {
@@ -20,20 +20,9 @@ window.Game = {
         L.control.zoom({position: 'topright'}).addTo(this.map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
 
-        this.checkDailyBonus();
         this.renderMap();
         this.bindEvents();
         document.getElementById('difficulty-modal').style.display = 'flex';
-    },
-
-    checkDailyBonus: function() {
-        let last = localStorage.getItem('rr_daily');
-        let today = new Date().toDateString();
-        if (last !== today) {
-            this.state.coins += 1200;
-            localStorage.setItem('rr_daily', today);
-            this.toast("Ежедневный бонус: +1200 монет!");
-        }
     },
 
     selectDifficulty: function(diff) {
@@ -108,11 +97,11 @@ window.Game = {
             
             let modesHtml = `
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 70, 1.0, 1.5)">
-                    <h3 style="color:#8BC34A;">Релакс (70 км/ч)</h3><p>Долго (тратится много еды), норм. расход, макс. поиск секретов.</p></div>
+                    <h3 style="color:#8BC34A;">Релакс (70 км/ч)</h3><p>Много интерактива, долгий путь.</p></div>
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 100, 1.0, 1.0)">
-                    <h3 style="color:#2196F3;">Оптимальный (100 км/ч)</h3><p>Баланс времени, расхода и поиска.</p></div>
+                    <h3 style="color:#2196F3;">Оптимальный (100 км/ч)</h3><p>Баланс времени и событий.</p></div>
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 140, 1.5, 0)">
-                    <h3 style="color:#F44336;">Тапка в пол (140 км/ч)</h3><p>Быстро, но расход бензина х1.5. Радар отключен. Штрафы.</p></div>
+                    <h3 style="color:#F44336;">Тапка в пол (140 км/ч)</h3><p>Расход х1.5, штрафы, без радара.</p></div>
             `;
             document.getElementById('drive-modes-container').innerHTML = modesHtml;
             document.getElementById('drive-mode-modal').style.display = 'flex';
@@ -174,9 +163,9 @@ window.Game = {
 
             let tickKm = td.distKm * (td.stepInc / td.coords.length);
             td.kmPassedTotal += tickKm;
-            this.state.kmSinceEvent += tickKm;
             document.getElementById('hud-dist').innerText = Math.round(td.kmPassedTotal);
 
+            // Траты ресурсов
             let wakeDrain = (tickKm / 700) * 100;
             let foodDrain = (tickKm / 700) * 100 * (this.state.car.id !== "bike" ? 1 : 2);
             let gasDrain = this.state.car.id !== "bike" ? (this.state.car.cons / 100) * tickKm * this.state.driveMode.gasMult : 0;
@@ -189,25 +178,16 @@ window.Game = {
 
             this.updateTopUI();
 
-            if (this.state.gas <= 0 && this.state.car.id !== "bike") {
-                clearInterval(this.animationInterval);
-                this.state.isMoving = false;
-                this.showConfirm("Бак пуст!", "Вы заглохли на трассе. Вызвать эвакуатор за 1000 монет?", () => {
-                    if (this.state.coins >= 1000) {
-                        this.state.coins -= 1000; this.state.gas = this.state.car.tank * 0.5;
-                        this.updateTopUI(); this.resumeTravel();
-                    } else {
-                        this.toast("Денег нет! Игра окончена."); setTimeout(() => window.location.reload(), 2000);
-                    }
-                });
-                return;
+            // ИНТЕРАКТИВ (QTE НА ТРАССЕ)
+            if (Math.random() < 0.005 && !this.state.qteActive) {
+                this.spawnQTE();
             }
 
-            if (this.state.kmSinceEvent >= 300) {
-                this.state.kmSinceEvent = 0;
+            // ПРОВЕРКИ СЮЖЕТА (Примерно шанс на большое событие)
+            if (Math.random() < 0.001 && !this.state.qteActive) {
                 clearInterval(this.animationInterval);
                 this.state.isMoving = false;
-                this.triggerRandomEvent();
+                this.triggerStoryEvent();
                 return;
             }
 
@@ -238,39 +218,82 @@ window.Game = {
         }, 40);
     },
 
-    // НОВАЯ СИСТЕМА СОБЫТИЙ С ВЫБОРОМ
-    triggerRandomEvent: function() {
-        // Шанс на красивый пейзаж 20%
-        let isNature = Math.random() < 0.2;
+    // МЕХАНИКА ВСПЛЫВАЮЩИХ ЗНАКОВ (QTE)
+    spawnQTE: function() {
+        this.state.qteActive = true;
+        let types = [
+            { id: 'camera', icon: 'fa-camera', color: '#F44336', text: 'КАМЕРА!', penalty: {coins: -250}, msgFail: "Вспышка! Штраф -250 ₽." },
+            { id: 'hole', icon: 'fa-triangle-exclamation', color: '#212121', text: 'ЯМА!', penalty: {hp: -15}, msgFail: "Удар подвески! Прочность -15%." },
+            { id: 'photo', icon: 'fa-image', color: '#4CAF50', text: 'ФОТО!', bonus: {coins: 300}, msgSuccess: "Отличный кадр! Донат +300 ₽." }
+        ];
         
-        if (isNature) {
-            let n = Math.floor(Math.random() * 4) + 1; 
-            let imgName = n === 4 ? "natures4.png" : `nature${n}.png`;
-            document.getElementById('event-img').src = `assets/events/${imgName}`;
-            document.getElementById('event-title').innerText = "Красивый Пейзаж";
-            document.getElementById('event-desc').innerText = "Вы сделали шикарное фото для блога! Подписчики кидают донаты.";
-            
-            let btnOk = document.createElement('button');
-            btnOk.className = 'btn-action'; btnOk.innerText = "ПОЛУЧИТЬ +300 ₽";
-            btnOk.onclick = () => {
-                this.state.coins += 300; this.updateTopUI();
-                document.getElementById('event-modal').style.display = 'none';
-                this.resumeTravel(); 
-            };
-            document.getElementById('event-actions').innerHTML = '';
-            document.getElementById('event-actions').appendChild(btnOk);
-            document.getElementById('event-modal').style.display = 'flex';
-            return;
-        }
+        let qte = types[Math.floor(Math.random() * types.length)];
+        let layer = document.getElementById('qte-layer');
+        let btn = document.getElementById('qte-btn');
+        
+        btn.innerHTML = `<i class="fa-solid ${qte.icon}"></i><br><span style="font-size:12px;">${qte.text}</span>`;
+        btn.style.background = qte.color;
+        layer.style.display = 'block';
 
-        // Обычные события
+        let clicked = false;
+        
+        btn.onclick = () => {
+            clicked = true;
+            layer.style.display = 'none';
+            this.state.qteActive = false;
+            
+            if (qte.bonus) {
+                // Если успели сфоткать - рандомная картинка природы
+                let n = Math.floor(Math.random() * 4) + 1; 
+                let imgName = n === 4 ? "natures4.png" : `nature${n}.png`;
+                document.getElementById('event-img').src = `assets/events/${imgName}`;
+                document.getElementById('event-title').innerText = "Красивый Пейзаж";
+                document.getElementById('event-desc').innerText = qte.msgSuccess;
+                
+                let btnOk = document.createElement('button');
+                btnOk.className = 'btn-action'; btnOk.innerText = "ОТЛИЧНО";
+                btnOk.onclick = () => {
+                    this.state.coins += qte.bonus.coins; this.updateTopUI();
+                    document.getElementById('event-modal').style.display = 'none';
+                };
+                document.getElementById('event-actions').innerHTML = '';
+                document.getElementById('event-actions').appendChild(btnOk);
+                document.getElementById('event-modal').style.display = 'flex';
+            } else {
+                this.toast("Увернулись!");
+            }
+        };
+
+        // Если не нажали за 2 секунды
+        setTimeout(() => {
+            if (!clicked) {
+                layer.style.display = 'none';
+                this.state.qteActive = false;
+                if (qte.penalty) {
+                    if(qte.penalty.coins) this.state.coins += qte.penalty.coins;
+                    if(qte.penalty.hp) this.state.hp += qte.penalty.hp;
+                    this.updateTopUI();
+                    
+                    // Показываем окно штрафа
+                    document.getElementById('event-img').src = `assets/events/${qte.id}.png`;
+                    document.getElementById('event-title').innerText = "НЕ УСПЕЛИ!";
+                    document.getElementById('event-desc').innerText = qte.msgFail;
+                    
+                    let btnOk = document.createElement('button');
+                    btnOk.className = 'btn-action'; btnOk.innerText = "ПОНЯТНО";
+                    btnOk.onclick = () => { document.getElementById('event-modal').style.display = 'none'; };
+                    document.getElementById('event-actions').innerHTML = '';
+                    document.getElementById('event-actions').appendChild(btnOk);
+                    document.getElementById('event-modal').style.display = 'flex';
+                }
+            }
+        }, 2000);
+    },
+
+    triggerStoryEvent: function() {
+        // Большие сюжетные события (Мошенники, Бабушки)
         let ev = Data.events[Math.floor(Math.random() * Data.events.length)];
         
-        if (ev.id === "police") {
-            if (this.state.driveMode.speed === 140) ev.choices[0].msg = "Штраф за превышение: -500 ₽!";
-            else ev.choices[0].msg = "Счастливого пути. Вы потеряли немного времени.";
-        }
-
         document.getElementById('event-img').src = `assets/events/${ev.img}`;
         document.getElementById('event-title').innerText = ev.title;
         document.getElementById('event-desc').innerText = ev.desc;
@@ -288,18 +311,14 @@ window.Game = {
                 }
                 this.state.coins -= choice.cost;
 
-                // Применяем эффекты от выбора
                 if (choice.action === "hp") this.state.hp = Math.max(0, Math.min(100, this.state.hp + choice.val));
                 if (choice.action === "food") this.state.food = Math.max(0, Math.min(100, this.state.food + choice.val));
                 if (choice.action === "coins") this.state.coins += choice.val;
                 
-                // Спец. эффекты
                 if (choice.action === "mixed_girl") { this.state.wake = Math.min(100, this.state.wake + 20); this.state.food -= 20; }
                 if (choice.action === "mixed_road") { this.state.wake -= 20; this.state.food -= 20; }
                 if (choice.action === "mixed_grandpa") { this.state.coins += 200; this.state.gas -= 5; }
                 if (choice.action === "mixed_cake") { this.state.food = 100; if(Math.random() > 0.5) this.state.wake = 0; }
-                if (choice.action === "police" && this.state.driveMode.speed === 140) { this.state.coins -= 500; }
-                
                 if (choice.action === "secret") {
                     this.state.food -= 20;
                     let hiddenCity = Data.cities.find(c => c.tier === 3 && !this.state.discovered.includes(c.id));
