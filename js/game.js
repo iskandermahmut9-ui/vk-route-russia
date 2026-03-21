@@ -20,9 +20,20 @@ window.Game = {
         L.control.zoom({position: 'topright'}).addTo(this.map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
 
+        this.checkDailyBonus();
         this.renderMap();
         this.bindEvents();
         document.getElementById('difficulty-modal').style.display = 'flex';
+    },
+
+    checkDailyBonus: function() {
+        let last = localStorage.getItem('rr_daily');
+        let today = new Date().toDateString();
+        if (last !== today) {
+            this.state.coins += 1200;
+            localStorage.setItem('rr_daily', today);
+            this.toast("Ежедневный бонус: +1200 монет!");
+        }
     },
 
     selectDifficulty: function(diff) {
@@ -183,7 +194,7 @@ window.Game = {
                 this.spawnQTE();
             }
 
-            // ПРОВЕРКИ СЮЖЕТА (Примерно шанс на большое событие)
+            // ПРОВЕРКИ СЮЖЕТА 
             if (Math.random() < 0.001 && !this.state.qteActive) {
                 clearInterval(this.animationInterval);
                 this.state.isMoving = false;
@@ -218,7 +229,6 @@ window.Game = {
         }, 40);
     },
 
-    // МЕХАНИКА ВСПЛЫВАЮЩИХ ЗНАКОВ (QTE)
     spawnQTE: function() {
         this.state.qteActive = true;
         let types = [
@@ -243,7 +253,6 @@ window.Game = {
             this.state.qteActive = false;
             
             if (qte.bonus) {
-                // Если успели сфоткать - рандомная картинка природы
                 let n = Math.floor(Math.random() * 4) + 1; 
                 let imgName = n === 4 ? "natures4.png" : `nature${n}.png`;
                 document.getElementById('event-img').src = `assets/events/${imgName}`;
@@ -264,7 +273,6 @@ window.Game = {
             }
         };
 
-        // Если не нажали за 2 секунды
         setTimeout(() => {
             if (!clicked) {
                 layer.style.display = 'none';
@@ -274,7 +282,6 @@ window.Game = {
                     if(qte.penalty.hp) this.state.hp += qte.penalty.hp;
                     this.updateTopUI();
                     
-                    // Показываем окно штрафа
                     document.getElementById('event-img').src = `assets/events/${qte.id}.png`;
                     document.getElementById('event-title').innerText = "НЕ УСПЕЛИ!";
                     document.getElementById('event-desc').innerText = qte.msgFail;
@@ -291,9 +298,13 @@ window.Game = {
     },
 
     triggerStoryEvent: function() {
-        // Большие сюжетные события (Мошенники, Бабушки)
         let ev = Data.events[Math.floor(Math.random() * Data.events.length)];
         
+        if (ev.id === "police") {
+            if (this.state.driveMode.speed === 140) ev.choices[0].msg = "Штраф за превышение: -500 ₽!";
+            else ev.choices[0].msg = "Счастливого пути. Вы потеряли немного времени.";
+        }
+
         document.getElementById('event-img').src = `assets/events/${ev.img}`;
         document.getElementById('event-title').innerText = ev.title;
         document.getElementById('event-desc').innerText = ev.desc;
@@ -319,6 +330,8 @@ window.Game = {
                 if (choice.action === "mixed_road") { this.state.wake -= 20; this.state.food -= 20; }
                 if (choice.action === "mixed_grandpa") { this.state.coins += 200; this.state.gas -= 5; }
                 if (choice.action === "mixed_cake") { this.state.food = 100; if(Math.random() > 0.5) this.state.wake = 0; }
+                if (choice.action === "police" && this.state.driveMode.speed === 140) { this.state.coins -= 500; }
+                
                 if (choice.action === "secret") {
                     this.state.food -= 20;
                     let hiddenCity = Data.cities.find(c => c.tier === 3 && !this.state.discovered.includes(c.id));
@@ -397,12 +410,7 @@ window.Game = {
         this.updateMarkers();
         this.updateTopUI();
         
-        document.getElementById('quest-city-name').innerText = city.name;
-        if(city.quests && city.quests.length > 0) {
-            this.showQuest(city);
-        } else {
-            this.openCityUI(city);
-        }
+        this.openCityUI(city);
     },
 
     updateMarkers: function() {
@@ -428,7 +436,7 @@ window.Game = {
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
         document.getElementById('city-fact').innerText = city.fact;
         
-        if (this.state.car.id === "camper" || this.state.car.id === "lada_camper") {
+        if (this.state.car.sleepBonus > 0) {
             document.getElementById('hotel-hint').innerText = `В этой машине можно спать (+${this.state.car.sleepBonus}% бодрости).`;
         } else {
             document.getElementById('hotel-hint').innerText = "Сон в этой машине не восстанавливает бодрость.";
@@ -498,12 +506,50 @@ window.Game = {
 
         if (p.exc > 0) {
             html += `<div class="shop-category" style="border:none;"><h4>🎫 Культура</h4><div class="btn-group">`;
-            html += `<button class="btn-shop ${this.state.excPaid ? 'purchased' : ''}" style="padding:10px !important" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.buyItem('exc', ${p.exc}, 0)">
+            html += `<button class="btn-shop ${this.state.excPaid ? 'purchased' : ''}" style="padding:10px !important" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.startExcursion(${p.exc})">
                 <b>Взять Экскурсию</b><small>Для Альбома</small><span class="price">${p.exc} ₽</span></button>`;
             html += `</div></div>`;
         }
 
         document.getElementById('city-shop').innerHTML = html;
+    },
+
+    // ЛОГИКА ЭКСКУРСИИ С ГИДОМ
+    startExcursion: function(price) {
+        if (this.state.coins < price) { this.toast("Не хватает монет!"); return; }
+        
+        this.state.coins -= price;
+        this.updateTopUI();
+        
+        // Показываем гида
+        let guideImg = Math.random() > 0.5 ? "guide_m.png" : "guide_f.png";
+        document.getElementById('quest-guide-img').src = `assets/quests/${guideImg}`;
+        document.getElementById('quest-city-name').innerText = this.state.currentCity.name;
+
+        let q = this.state.currentCity.quests[0];
+        document.getElementById('quest-text').innerText = q.q;
+        let ansDiv = document.getElementById('quest-answers'); ansDiv.innerHTML = '';
+        
+        q.a.forEach((ans, i) => {
+            let b = document.createElement('button'); b.className = 'btn-action'; b.innerText = ans;
+            b.onclick = () => {
+                document.getElementById('quest-modal').style.display = 'none';
+                if(i === q.right) { 
+                    let reward = Data.prices[this.state.currentCity.tier].quizReward;
+                    this.state.coins += reward; 
+                    this.toast(`Верно! Вы заработали ${reward} монет.`); 
+                } else { 
+                    this.toast("Неверный ответ! Опыта нет."); 
+                }
+                
+                this.state.excPaid = true;
+                this.updateTopUI();
+                this.checkCityCompletion();
+                this.renderCityShop(this.state.currentCity);
+            };
+            ansDiv.appendChild(b);
+        });
+        document.getElementById('quest-modal').style.display = 'flex';
     },
 
     buyItem: function(type, price, amount) {
@@ -514,17 +560,18 @@ window.Game = {
         else if (type === 'food') { this.state.food = Math.min(100, this.state.food + amount); } 
         else if (type === 'gas') { this.state.gas += amount; } 
         else if (type === 'hp') { this.state.hp += amount; } 
-        else if (type === 'exc') { this.state.excPaid = true; }
 
         this.updateTopUI();
-        
+        this.checkCityCompletion();
+        this.renderCityShop(this.state.currentCity);
+    },
+
+    checkCityCompletion: function() {
         if (this.state.hotelPaid && this.state.excPaid && !this.state.collected.includes(this.state.currentCity.id)) {
             this.state.collected.push(this.state.currentCity.id);
             this.toast("Условия выполнены! Карточка добавлена в Альбом!");
             this.updateMarkers();
         }
-
-        this.renderCityShop(this.state.currentCity);
     },
 
     leaveCity: function() {
@@ -555,33 +602,6 @@ window.Game = {
         document.getElementById('custom-modal').style.display = 'flex';
         document.getElementById('btn-modal-ok').onclick = () => { document.getElementById('custom-modal').style.display='none'; onYes(); };
         document.getElementById('btn-modal-cancel').onclick = () => { document.getElementById('custom-modal').style.display='none'; };
-    },
-
-    showQuest: function(city) {
-        let guideImg = Math.random() > 0.5 ? "guide_m.png" : "guide_f.png";
-        document.getElementById('quest-guide-img').src = `assets/quests/${guideImg}`;
-
-        let q = city.quests[0];
-        document.getElementById('quest-text').innerText = q.q;
-        let ansDiv = document.getElementById('quest-answers'); ansDiv.innerHTML = '';
-        
-        q.a.forEach((ans, i) => {
-            let b = document.createElement('button'); b.className = 'btn-action'; b.innerText = ans;
-            b.onclick = () => {
-                document.getElementById('quest-modal').style.display = 'none';
-                if(i === q.right) { 
-                    let reward = Data.prices[city.tier].quizReward;
-                    this.state.coins += reward; 
-                    this.toast(`Верно! Вы заработали ${reward} монет.`); 
-                } else { 
-                    this.toast("Неверный ответ! Опыта нет."); 
-                }
-                this.updateTopUI();
-                this.openCityUI(city);
-            };
-            ansDiv.appendChild(b);
-        });
-        document.getElementById('quest-modal').style.display = 'flex';
     },
 
     openAlbum: function() {

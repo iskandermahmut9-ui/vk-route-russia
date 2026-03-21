@@ -1,16 +1,18 @@
 window.Data = {
+    // ВАШ УТВЕРЖДЕННЫЙ ГАРАЖ
     garages: {
         normal: [
-            { id: "sedan", name: "🚙 Седан (Solaris)", tank: 50, cons: 8, hpLoss: 0.8, sleepBonus: 0, radius: 15 },
-            { id: "suv", name: "🚜 Внедорожник (УАЗ)", tank: 80, cons: 12, hpLoss: 0.3, sleepBonus: 0, radius: 40 },
-            { id: "camper", name: "🚐 Автодом", tank: 70, cons: 15, hpLoss: 0.5, sleepBonus: 100, radius: 20 }
+            { id: "volga", name: "Внедорожник Волга Т50", img: "volga.png", tank: 80, cons: 12, hpLoss: 0.3, sleepBonus: 0, radius: 40 },
+            { id: "moskvich", name: "Седан Москвич 6", img: "moskvich.png", tank: 50, cons: 8, hpLoss: 0.8, sleepBonus: 0, radius: 15 },
+            { id: "gazel", name: "Автодом Газ Некст", img: "gazel.png", tank: 70, cons: 15, hpLoss: 0.5, sleepBonus: 100, radius: 20 }
         ],
         hard: [
-            { id: "lada", name: "🚗 ВАЗ 2107", tank: 40, cons: 10, hpLoss: 2.0, sleepBonus: 0, radius: 15 },
-            { id: "niva", name: "🚙 Нива", tank: 45, cons: 13, hpLoss: 1.5, sleepBonus: 0, radius: 40 }
+            { id: "uaz", name: "УАЗ Патриот", img: "uaz.png", tank: 75, cons: 16, hpLoss: 1.0, sleepBonus: 0, radius: 40 },
+            { id: "granta", name: "Лада Гранта", img: "granta.png", tank: 45, cons: 9, hpLoss: 1.5, sleepBonus: 0, radius: 15 },
+            { id: "lada_camper", name: "Автокемпер Лада", img: "lada_camper.png", tank: 50, cons: 11, hpLoss: 1.2, sleepBonus: 60, radius: 20 }
         ],
         ultra: [
-            { id: "bike", name: "🚲 Велосипед", tank: 0, cons: 0, hpLoss: 0.1, sleepBonus: 0, radius: 5 }
+            { id: "bike", name: "🚲 Велосипед", img: "bike.png", tank: 0, cons: 0, hpLoss: 0.1, sleepBonus: 0, radius: 5 }
         ]
     },
 
@@ -19,6 +21,20 @@ window.Data = {
         2: { hotel: 300, hostel: 150, rest: 200, fastfood: 100, repair: 7,  gas: 6, exc: 100, quizReward: 100 },
         3: { hotel: 0,   hostel: 100, rest: 0,   fastfood: 80,  repair: 5,  gas: 6, exc: 50,  quizReward: 500 } 
     },
+
+    events: [
+        { id: "scammer", img: "moshen.png", title: "Подозрительный тип", desc: "На обочине стоит мужчина и предлагает купить 'Чудо-присадку' для топлива за 100 ₽.", choices: [{ text: "Купить (100 ₽)", action: "hp", cost: 100, val: -15, msg: "Это была подделка! Двигатель затроил (-15% прочности)." }, { text: "Уехать", action: "skip", cost: 0, val: 0, msg: "Вы разумно поехали дальше." }] },
+        { id: "businessman", img: "bedb.png", title: "Солидный господин", desc: "У бизнесмена заглох Мерседес. Он просит 500 ₽ на эвакуатор и клянется перевести 2000 ₽ вечером.", choices: [{ text: "Помочь (500 ₽)", action: "coins", cost: 500, val: 0, msg: "Он взял деньги и перестал выходить на связь. Вас развели." }, { text: "Отказать", action: "skip", cost: 0, val: 0, msg: "Вы сохранили свои деньги." }] },
+        { id: "goodgirl", img: "goodg.png", title: "Студентка-попутчица", desc: "Голосует милая студентка. Довезете?", choices: [{ text: "Подвезти", action: "mixed_girl", cost: 0, val: 0, msg: "Она травила байки! (+20% бодрости, но съела ваши запасы: -20% еды)." }, { text: "Проехать мимо", action: "skip", cost: 0, val: 0, msg: "Вы поехали одни." }] },
+        { id: "worker", img: "worker.png", title: "Дорожные работы", desc: "Мост ремонтируют. Рабочий готов пропустить вас по новому асфальту за 200 ₽.", choices: [{ text: "Дать на лапу (200 ₽)", action: "coins", cost: 200, val: 0, msg: "Вы быстро проскочили участок." }, { text: "В объезд!", action: "mixed_road", cost: 0, val: 0, msg: "Вы потеряли много сил и времени (-20% еды, -20% бодрости)." }] },
+        { id: "grandma", img: "grandma.png", title: "Добрая Бабушка", desc: "Местная бабушка продает горячие пирожки с картошкой.", choices: [{ text: "Купить (50 ₽)", action: "food", cost: 50, val: 40, msg: "Безумно вкусно! (+40% сытости)." }, { text: "Я на диете", action: "skip", cost: 0, val: 0, msg: "Бабушка грустно вздохнула." }] },
+        { id: "grandpa", img: "grandpa.png", title: "Дедушка-дачник", desc: "Дед с рассадой просит добросить его до села.", choices: [{ text: "Подвезти", action: "mixed_grandpa", cost: 0, val: 0, msg: "Дед отблагодарил вас! (+200 ₽, но вы потратили бензин)." }, { text: "Не брать", action: "skip", cost: 0, val: 0, msg: "Вы не стали терять время." }] },
+        { id: "mechanic", img: "mechanic.png", title: "Гаражный СТО", desc: "Механик Михалыч предлагает подлатать подвеску за 100 ₽.", choices: [{ text: "Починить (100 ₽)", action: "hp", cost: 100, val: 30, msg: "Машина поехала мягче! (+30% прочности)." }, { text: "Ехать так", action: "skip", cost: 0, val: 0, msg: "Поехали дальше со скрипом." }] },
+        { id: "tourist", img: "tourist.png", title: "Автостопщик", desc: "Парень обещает показать 'тайное место', если подкинете.", choices: [{ text: "Взять с собой", action: "secret", cost: 0, val: 0, msg: "Он съел вашу еду (-20%), но открыл секретный город на карте!" }, { text: "Игнорировать", action: "skip", cost: 0, val: 0, msg: "Вы проехали мимо." }] },
+        { id: "cake", img: "cake.png", title: "Придорожное кафе", desc: "В витрине лежит торт за 100 ₽. Голод берет свое.", choices: [{ text: "Съесть торт (100 ₽)", action: "mixed_cake", cost: 100, val: 0, msg: "Торт был так себе (Сытость 100%, но Бодрость упала в 0)." }, { text: "Пройти мимо", action: "skip", cost: 0, val: 0, msg: "Желудок урчит, но вы целы." }] },
+        { id: "road", img: "road.png", title: "Убитая дорога", desc: "Асфальт закончился. Начался жесткий грейдер.", choices: [{ text: "Стиснуть зубы", action: "hp", cost: 0, val: -10, msg: "Подвеска плачет (-10% прочности)." }] },
+        { id: "police", img: "police.png", title: "Пост ДПС", desc: "Инспектор останавливает вас для проверки документов.", choices: [{ text: "Показать документы", action: "police", cost: 0, val: 0, msg: "" }] }
+    ],
 
     cities: [
         { id: "moscow", name: "Москва", tier: 1, coords: [55.7558, 37.6173], fact: "Столица России.", quests: [{q: "Год основания?", a: ["1147", "1242", "1380"], right: 0}] },

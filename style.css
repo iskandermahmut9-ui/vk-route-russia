@@ -27,7 +27,7 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .shop-category { margin-bottom: 15px; border-bottom: 1px dashed #444; padding-bottom: 10px; }
 .shop-category h4 { margin: 0 0 8px 0; color: #FF9800; font-size: 13px; text-transform: uppercase; }
 .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-.btn-shop { flex: 1; background: #2a2a2a; border: 2px solid #444; color: #fff; padding: 8px; border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; font-family: 'Montserrat', sans-serif; min-width: 120px; }
+.btn-shop { flex: 1; background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; font-family: 'Montserrat', sans-serif; min-width: 120px; }
 .btn-shop:hover:not(:disabled) { background: #333; border-color: var(--accent); transform: translateY(-2px); }
 .btn-shop:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); background: #1a1a1a; }
 .btn-shop b { display: block; font-size: 13px; margin-bottom: 3px; }
@@ -78,25 +78,20 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 @keyframes fadein { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeout { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
 
-/* ВИЗУАЛЬНЫЕ ЭЛЕМЕНТЫ (КАРТИНКИ) */
+/* === ПОЛНАЯ ОТМЕНА РАМОК ДЛЯ PNG КАРТИНОК === */
+.city-img-container { width: 100%; height: 160px; text-align: center; margin-bottom: 15px; background: transparent !important; border: none !important; }
+.city-img-container img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.5)); }
 
-.city-img-container { width: 100%; height: 160px; text-align: center; margin-bottom: 15px; background: transparent; border: none; }
-.city-img-container img { width: 100%; height: 100%; object-fit: contain; }
+.car-img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 10px; background: transparent !important; border: none !important; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.6)); }
 
-.car-img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 10px; drop-shadow: 0 10px 10px rgba(0,0,0,0.5); border: none; background: transparent; }
+.event-image { width: 100%; height: 160px; object-fit: contain; margin-bottom: 10px; background: transparent !important; border: none !important; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.4)); }
 
-.event-image { width: 100%; height: 160px; object-fit: contain; margin-bottom: 10px; border: none; background: transparent; }
+.guide-image { width: 120px; height: 120px; object-fit: contain; margin: 0 auto; display: block; background: transparent !important; border: none !important; filter: drop-shadow(0 0 15px rgba(255,215,0,0.4)); }
 
-.guide-image { width: 120px; height: 120px; object-fit: contain; margin: 0 auto; display: block; filter: drop-shadow(0 0 15px rgba(255,215,0,0.3)); background: transparent; border: none; }
+.btn-shop-img { width: 100%; height: 70px; object-fit: contain; background: transparent !important; border: none !important; margin-bottom: 5px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); }
+.btn-shop-content { padding: 4px; }
 
-.btn-shop { position: relative; overflow: hidden; padding: 0 !important; display: flex; flex-direction: column; }
-.btn-shop-img { width: 100%; height: 70px; object-fit: cover; border-bottom: 2px solid #444; }
-.btn-shop-content { padding: 8px; }
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    100% { transform: scale(1.1); }
-}
+@keyframes pulse { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
 
 @media screen and (max-width: 900px) {
     :root { --header-h: auto; }
