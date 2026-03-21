@@ -3,7 +3,6 @@
 body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display: flex; flex-direction: column; background-color: var(--bg-dark); color: var(--text-white); overflow: hidden; }
 .leaflet-control-attribution { display: none !important; }
 
-/* Шапка */
 .header { background: var(--header-bg); height: var(--header-h); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255, 0.05); z-index: 1000; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
 .logo { font-family: 'Russo One', sans-serif; color: var(--accent); font-size: 22px; margin-right: 15px; }
 .btn-icon { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; font-family: 'Montserrat', sans-serif; }
@@ -13,11 +12,9 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .player-profile { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; }
 .player-profile img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; }
 
-/* Лэйаут */
 .main-container { display: flex; flex: 1; position: relative; height: calc(100vh - var(--header-h)); }
 #map { flex: 1; height: 100%; background: #e5e3df; z-index: 1; }
 
-/* Игровой Хаб Города */
 .city-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 500; display: flex; justify-content: flex-start; align-items: flex-start; padding: 20px; pointer-events: auto; }
 .city-panel { background: rgba(28, 28, 28, 0.95); width: 420px; max-height: 100%; border-radius: 16px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); border: 1px solid #444; overflow-y: auto; backdrop-filter: blur(10px); }
 .city-panel::-webkit-scrollbar { width: 6px; }
@@ -27,7 +24,6 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .tier-badge { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 900; background: #e74c3c; text-transform: uppercase; margin-bottom: 15px; }
 .city-fact { font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
 
-/* Кнопки магазина */
 .shop-category { margin-bottom: 15px; border-bottom: 1px dashed #444; padding-bottom: 10px; }
 .shop-category h4 { margin: 0 0 8px 0; color: #FF9800; font-size: 13px; text-transform: uppercase; }
 .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -63,22 +59,18 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 .diff-card h3, .car-card h3 { margin: 0 0 8px 0; font-size: 15px; color: #fff; } 
 .diff-card p, .car-card p { font-size: 11px; color: #aaa; margin: 0; line-height: 1.4; }
 
-/* Альбом */
 .album-card { background: #1a1a1a; border: 2px solid #4CAF50; border-radius: 12px; padding: 15px 10px; text-align: center; box-shadow: 0 0 10px rgba(76, 175, 80, 0.2); }
 .album-card i { font-size: 30px; margin-bottom: 10px; color: #4CAF50; }
 
-/* НАСТОЯЩИЕ ГЕО-МАРКЕРЫ (ИКОНКИ ФА) */
 .map-pin { background: transparent; border: none; text-align: center; }
 .map-pin i { font-size: 28px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); transition: 0.2s; }
-.marker-tier-1 i { color: #F44336; } /* Красный для столиц */
-.marker-tier-2 i { color: #FFEB3B; } /* Желтый для средних */
-.marker-tier-3 i { color: #9C27B0; } /* Фиолетовый для скрытых */
-.marker-collected i { color: #4CAF50; } /* Зеленый для пройденных */
-
+.marker-tier-1 i { color: #F44336; }
+.marker-tier-2 i { color: #FFEB3B; }
+.marker-tier-3 i { color: #9C27B0; }
+.marker-collected i { color: #4CAF50; }
 .hidden-tier { opacity: 0; pointer-events: none; } 
 .marker-discovered { opacity: 1 !important; pointer-events: auto !important; }
 
-/* Иконка машинки на карте */
 .marker-car { background: #fff; color: #000; border: 2px solid #000; border-radius: 50%; width: 26px !important; height: 26px !important; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.8); z-index: 1000 !important; margin-left: -13px !important; margin-top: -13px !important; font-size: 12px;}
 
 .toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
@@ -86,7 +78,16 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; height: 100vh; display:
 @keyframes fadein { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeout { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
 
-/* МОБИЛЬНАЯ АДАПТАЦИЯ (Шторка) */
+.city-img-container { width: 100%; height: 140px; border-radius: 12px; overflow: hidden; margin-bottom: 15px; background: #333; }
+.city-img-container img { width: 100%; height: 100%; object-fit: cover; }
+.car-img { width: 100%; height: 90px; object-fit: contain; margin-bottom: 10px; drop-shadow: 0 5px 5px rgba(0,0,0,0.5); }
+.event-image { width: 100%; height: 160px; object-fit: cover; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+.guide-image { width: 100px; height: 100px; object-fit: cover; border-radius: 50%; margin: 0 auto; display: block; border: 3px solid #FFD700; box-shadow: 0 0 15px rgba(255,215,0,0.3); }
+
+.btn-shop { position: relative; overflow: hidden; padding: 0 !important; display: flex; flex-direction: column; }
+.btn-shop-img { width: 100%; height: 70px; object-fit: cover; border-bottom: 2px solid #444; }
+.btn-shop-content { padding: 8px; }
+
 @media screen and (max-width: 900px) {
     :root { --header-h: auto; }
     .header { flex-direction: column; padding: 10px; gap: 10px; }

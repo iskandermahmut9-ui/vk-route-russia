@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Маршруты: Россия | VK Mini App</title>
-    
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -41,6 +40,10 @@
 
     <div id="city-overlay" class="city-overlay" style="display: none;">
         <div class="city-panel">
+            <div class="city-img-container">
+                <img id="city-header-img" src="" alt="City">
+            </div>
+            
             <h2 id="city-name" class="city-title">Город</h2>
             <span id="city-tier" class="tier-badge">Уровень</span>
             <p id="city-fact" class="city-fact"></p>
@@ -48,8 +51,9 @@
             <div id="city-shop" class="city-shop"></div>
             
             <div class="city-footer">
+                <p id="hotel-hint" class="hint-text" style="text-align:center; margin-bottom:10px;"></p>
                 <button class="btn-action btn-ad" id="btn-city-ad"><i class="fa-solid fa-play"></i> РЕКЛАМА (+500 <i class="fa-solid fa-coins"></i>)</button>
-                <button class="btn-action btn-leave" id="btn-leave-city">ЕХАТЬ ДАЛЬШЕ <i class="fa-solid fa-arrow-right"></i></button>
+                <button class="btn-action btn-leave" id="btn-leave-city" style="display:none;">ЕХАТЬ ДАЛЬШЕ <i class="fa-solid fa-arrow-right"></i></button>
             </div>
         </div>
     </div>
@@ -68,7 +72,7 @@
                 <h3>Обычная</h3><p>Современные авто. Редкие поломки.</p>
             </div>
             <div class="diff-card" onclick="Game.selectDifficulty('hard')">
-                <h3 style="color:#FF9800;">Сложная</h3><p>Классика (УАЗ, Нива). Большой расход.</p>
+                <h3 style="color:#FF9800;">Сложная</h3><p>Классика. Большой расход и износ.</p>
             </div>
             <div class="diff-card" onclick="Game.selectDifficulty('ultra')">
                 <h3 style="color:#F44336;">Хардкор</h3><p>Велосипед. Нет бензина, постоянный голод.</p>
@@ -78,7 +82,7 @@
 </div>
 
 <div id="garage-modal" class="modal-overlay">
-    <div class="modal-box" style="max-width: 700px;">
+    <div class="modal-box" style="max-width: 800px;">
         <div class="modal-head">ГАРАЖ 2.0</div>
         <div id="garage-list" class="grid-3"></div>
     </div>
@@ -95,8 +99,9 @@
 
 <div id="event-modal" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-head" id="event-title" style="color: #FFD700;">СОБЫТИЕ НА ТРАССЕ</div>
-        <p id="event-desc" style="font-size: 15px; margin-bottom: 25px; line-height: 1.5;"></p>
+        <img id="event-img" src="" class="event-image" alt="">
+        <div class="modal-head" id="event-title" style="color: #FFD700; margin-top: 15px;">СОБЫТИЕ</div>
+        <p id="event-desc" style="font-size: 14px; margin-bottom: 25px; line-height: 1.5; color: #ccc;"></p>
         <div id="event-actions" style="display: flex; gap: 10px; flex-direction: column;"></div>
     </div>
 </div>
@@ -104,7 +109,7 @@
 <div id="passing-modal" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-head" style="color: #2196F3;">РАДАР ОБНАРУЖИЛ ГОРОД</div>
-        <p style="font-size: 15px; margin-bottom: 25px;">Вы проезжаете мимо локации: <b id="passing-city-name" style="color:#FFD700;"></b>. Желаете перестроить маршрут и заехать?</p>
+        <p style="font-size: 15px; margin-bottom: 25px;">Вы проезжаете мимо локации: <b id="passing-city-name" style="color:#FFD700;"></b>. Желаете свернуть?</p>
         <div style="display: flex; gap: 10px;">
             <button class="btn-action" id="btn-passing-yes" style="background: #2196F3;">СВЕРНУТЬ</button>
             <button class="btn-action btn-leave" id="btn-passing-no">ЕХАТЬ ДАЛЬШЕ</button>
@@ -114,8 +119,9 @@
 
 <div id="quest-modal" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-head" style="color:#FFD700;">ВИКТОРИНА: <span id="quest-city-name"></span></div>
-        <div id="quest-text" style="font-size: 16px; margin-bottom: 20px;"></div>
+        <img id="quest-guide-img" src="" class="guide-image" alt="Guide">
+        <div class="modal-head" style="color:#FFD700; margin-top: 10px;">ЭКСКУРСИЯ: <span id="quest-city-name"></span></div>
+        <div id="quest-text" style="font-size: 15px; margin-bottom: 20px;"></div>
         <div id="quest-answers" style="display: flex; flex-direction: column; gap: 10px;"></div>
     </div>
 </div>

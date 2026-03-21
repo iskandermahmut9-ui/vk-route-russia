@@ -18,7 +18,7 @@ window.Game = {
 
         this.map = L.map('map', { zoomControl: false }).setView([55.75, 38.0], 6);
         L.control.zoom({position: 'topright'}).addTo(this.map);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '' }).addTo(this.map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
 
         this.checkDailyBonus();
         this.renderMap();
@@ -43,7 +43,11 @@ window.Game = {
         const list = document.getElementById('garage-list'); list.innerHTML = '';
         Data.garages[diff].forEach(car => {
             let div = document.createElement('div'); div.className = 'car-card';
-            div.innerHTML = `<h3>${car.name}</h3><p>Бак: ${car.tank}л | Расход: ${car.cons}л<br>Радар: ${car.radius} км</p>`;
+            div.innerHTML = `
+                <img src="assets/cars/${car.img}" class="car-img" alt="${car.name}">
+                <h3>${car.name}</h3>
+                <p>Бак: ${car.tank}л | Расход: ${car.cons}л<br>Радар: ${car.radius} км</p>
+            `;
             div.onclick = () => {
                 this.state.car = car;
                 this.state.gas = car.tank;
@@ -123,9 +127,8 @@ window.Game = {
         let plannedLine = L.polyline(coords, {color: '#FF5722', weight: 4, opacity: 0.5, dashArray: '5, 10'}).addTo(this.map);
         this.routeLines.push(plannedLine);
 
-        // ЧЕСТНАЯ СКОРОСТЬ: 1 СЕК = 10 МИН ИГРЫ
         let gameHours = distKm / speed;
-        let realSeconds = (gameHours * 60) / 10; 
+        let realSeconds = (gameHours * 60) / 30; 
         let durationMs = realSeconds * 1000;
         
         let intervalMs = 40;
@@ -153,9 +156,7 @@ window.Game = {
         this.animationInterval = setInterval(() => {
             td.currentStep += td.stepInc;
 
-            if (td.currentStep >= td.coords.length - 1) {
-                td.currentStep = td.coords.length - 1;
-            }
+            if (td.currentStep >= td.coords.length - 1) td.currentStep = td.coords.length - 1;
 
             let idx = Math.floor(td.currentStep);
             let nextIdx = Math.min(idx + 1, td.coords.length - 1);
@@ -171,13 +172,11 @@ window.Game = {
             this.carMarker.setLatLng(pos);
             if(window.innerWidth > 768) this.map.panTo(pos, {animate: true, duration: 0.1});
 
-            // Точный расход за этот микро-тик
             let tickKm = td.distKm * (td.stepInc / td.coords.length);
             td.kmPassedTotal += tickKm;
             this.state.kmSinceEvent += tickKm;
             document.getElementById('hud-dist').innerText = Math.round(td.kmPassedTotal);
 
-            // МАТЕМАТИКА (700 км = 100%)
             let wakeDrain = (tickKm / 700) * 100;
             let foodDrain = (tickKm / 700) * 100 * (this.state.car.id !== "bike" ? 1 : 2);
             let gasDrain = this.state.car.id !== "bike" ? (this.state.car.cons / 100) * tickKm * this.state.driveMode.gasMult : 0;
@@ -190,14 +189,13 @@ window.Game = {
 
             this.updateTopUI();
 
-            // ПРОВЕРКИ
             if (this.state.gas <= 0 && this.state.car.id !== "bike") {
                 clearInterval(this.animationInterval);
                 this.state.isMoving = false;
                 this.showConfirm("Бак пуст!", "Вы заглохли на трассе. Вызвать эвакуатор за 1000 монет?", () => {
                     if (this.state.coins >= 1000) {
                         this.state.coins -= 1000; this.state.gas = this.state.car.tank * 0.5;
-                        this.updateTopUI(); this.resumeTravel(); // ВОЗОБНОВЛЯЕМ
+                        this.updateTopUI(); this.resumeTravel();
                     } else {
                         this.toast("Денег нет! Игра окончена."); setTimeout(() => window.location.reload(), 2000);
                     }
@@ -205,7 +203,6 @@ window.Game = {
                 return;
             }
 
-            // СОБЫТИЯ (~300 км)
             if (this.state.kmSinceEvent >= 300) {
                 this.state.kmSinceEvent = 0;
                 clearInterval(this.animationInterval);
@@ -214,7 +211,6 @@ window.Game = {
                 return;
             }
 
-            // РАДАР И ЗАЕЗД В ГОРОДА
             if (this.state.driveMode.radMult > 0) {
                 for (let c of Data.cities) {
                     if (c.id !== td.city.id && c.id !== this.state.currentCity.id && !this.state.history.includes(c.id)) {
@@ -230,7 +226,6 @@ window.Game = {
                 }
             }
 
-            // ПРИБЫТИЕ
             if (td.currentStep >= td.coords.length - 1) {
                 clearInterval(this.animationInterval);
                 this.state.gas = Math.max(0, this.state.gas);
@@ -243,33 +238,90 @@ window.Game = {
         }, 40);
     },
 
+    // НОВАЯ СИСТЕМА СОБЫТИЙ С ВЫБОРОМ
     triggerRandomEvent: function() {
-        let events = [
-            { t: "Попутчик", d: "Вы подвезли студента. Он скинул на бензин: +200 монет.", coins: 200, hp: 0 },
-            { t: "Камера ГИБДД", d: "Вспышка! Вы превысили скорость. Штраф: -250 монет.", coins: -250, hp: 0 },
-            { t: "Яма на дороге", d: "Сильный удар подвески. Потребуется ремонт (-10% прочности).", coins: 0, hp: -10 }
-        ];
-        let ev = events[Math.floor(Math.random() * events.length)];
-        if(this.state.driveMode.speed === 140 && Math.random() < 0.5) ev = events[1]; // Больше шанс камеры
-
-        document.getElementById('event-title').innerText = ev.t;
-        document.getElementById('event-desc').innerText = ev.d;
+        // Шанс на красивый пейзаж 20%
+        let isNature = Math.random() < 0.2;
         
-        let btnOk = document.createElement('button');
-        btnOk.className = 'btn-action'; btnOk.innerText = "ПОНЯТНО";
-        btnOk.onclick = () => {
-            this.state.coins += ev.coins; 
-            this.state.hp = Math.max(0, this.state.hp + ev.hp);
-            document.getElementById('event-modal').style.display = 'none';
-            this.updateTopUI();
-            this.resumeTravel(); // МАШИНА ЕДЕТ ДАЛЬШЕ!
-        };
+        if (isNature) {
+            let n = Math.floor(Math.random() * 4) + 1; 
+            let imgName = n === 4 ? "natures4.png" : `nature${n}.png`;
+            document.getElementById('event-img').src = `assets/events/${imgName}`;
+            document.getElementById('event-title').innerText = "Красивый Пейзаж";
+            document.getElementById('event-desc').innerText = "Вы сделали шикарное фото для блога! Подписчики кидают донаты.";
+            
+            let btnOk = document.createElement('button');
+            btnOk.className = 'btn-action'; btnOk.innerText = "ПОЛУЧИТЬ +300 ₽";
+            btnOk.onclick = () => {
+                this.state.coins += 300; this.updateTopUI();
+                document.getElementById('event-modal').style.display = 'none';
+                this.resumeTravel(); 
+            };
+            document.getElementById('event-actions').innerHTML = '';
+            document.getElementById('event-actions').appendChild(btnOk);
+            document.getElementById('event-modal').style.display = 'flex';
+            return;
+        }
+
+        // Обычные события
+        let ev = Data.events[Math.floor(Math.random() * Data.events.length)];
+        
+        if (ev.id === "police") {
+            if (this.state.driveMode.speed === 140) ev.choices[0].msg = "Штраф за превышение: -500 ₽!";
+            else ev.choices[0].msg = "Счастливого пути. Вы потеряли немного времени.";
+        }
+
+        document.getElementById('event-img').src = `assets/events/${ev.img}`;
+        document.getElementById('event-title').innerText = ev.title;
+        document.getElementById('event-desc').innerText = ev.desc;
         document.getElementById('event-actions').innerHTML = '';
-        document.getElementById('event-actions').appendChild(btnOk);
+        
+        ev.choices.forEach(choice => {
+            let btn = document.createElement('button');
+            btn.className = 'btn-action'; 
+            if (choice.cost > 0) btn.style.background = "#444";
+            btn.innerText = choice.text;
+            
+            btn.onclick = () => {
+                if (this.state.coins < choice.cost) {
+                    this.toast("У вас нет столько денег!"); return;
+                }
+                this.state.coins -= choice.cost;
+
+                // Применяем эффекты от выбора
+                if (choice.action === "hp") this.state.hp = Math.max(0, Math.min(100, this.state.hp + choice.val));
+                if (choice.action === "food") this.state.food = Math.max(0, Math.min(100, this.state.food + choice.val));
+                if (choice.action === "coins") this.state.coins += choice.val;
+                
+                // Спец. эффекты
+                if (choice.action === "mixed_girl") { this.state.wake = Math.min(100, this.state.wake + 20); this.state.food -= 20; }
+                if (choice.action === "mixed_road") { this.state.wake -= 20; this.state.food -= 20; }
+                if (choice.action === "mixed_grandpa") { this.state.coins += 200; this.state.gas -= 5; }
+                if (choice.action === "mixed_cake") { this.state.food = 100; if(Math.random() > 0.5) this.state.wake = 0; }
+                if (choice.action === "police" && this.state.driveMode.speed === 140) { this.state.coins -= 500; }
+                
+                if (choice.action === "secret") {
+                    this.state.food -= 20;
+                    let hiddenCity = Data.cities.find(c => c.tier === 3 && !this.state.discovered.includes(c.id));
+                    if (hiddenCity) {
+                        this.state.discovered.push(hiddenCity.id);
+                        this.markers[hiddenCity.id].getElement().classList.remove('hidden-tier');
+                        this.markers[hiddenCity.id].getElement().classList.add('marker-discovered');
+                        this.toast(`Автостопщик показал на карте: ${hiddenCity.name}!`);
+                    }
+                }
+
+                this.toast(choice.msg);
+                this.updateTopUI();
+                document.getElementById('event-modal').style.display = 'none';
+                this.resumeTravel(); 
+            };
+            document.getElementById('event-actions').appendChild(btn);
+        });
+
         document.getElementById('event-modal').style.display = 'flex';
     },
 
-    // ЛОГИКА ФИЗИЧЕСКОГО ЗАЕЗДА В ГОРОД ПО ПУТИ
     triggerPassingCity: function(passingCity) {
         this.state.history.push(passingCity.id);
         document.getElementById('passing-city-name').innerText = passingCity.name;
@@ -278,18 +330,17 @@ window.Game = {
             this.markers[passingCity.id].getElement().classList.remove('hidden-tier');
             this.markers[passingCity.id].getElement().classList.add('marker-discovered');
             this.state.discovered.push(passingCity.id);
-            this.toast(`Вы нашли секретную локацию: ${passingCity.name}!`);
         }
 
         document.getElementById('passing-modal').style.display = 'flex';
         
         document.getElementById('btn-passing-yes').onclick = () => {
             document.getElementById('passing-modal').style.display = 'none';
-            this.detourToCity(passingCity); // ПЕРЕСТРОИТЬ МАРШРУТ
+            this.detourToCity(passingCity);
         };
         document.getElementById('btn-passing-no').onclick = () => {
             document.getElementById('passing-modal').style.display = 'none';
-            this.resumeTravel(); // ЕДЕМ МИМО
+            this.resumeTravel();
         };
     },
 
@@ -297,14 +348,12 @@ window.Game = {
         let td = this.state.travelData;
         let currentPos = this.carMarker.getLatLng();
 
-        // 1. Отрезаем недобитый маршрут
         this.map.removeLayer(td.line);
         let drivenCoords = td.coords.slice(0, Math.floor(td.currentStep) + 1);
         drivenCoords.push([currentPos.lat, currentPos.lng]);
         let drivenLine = L.polyline(drivenCoords, {color: '#555', weight: 3, dashArray: '5, 10'}).addTo(this.map);
         this.routeLines.push(drivenLine);
 
-        // 2. Строим новый маршрут до этого города
         this.toast(`Перестраиваем маршрут в ${passingCity.name}...`);
         const url = `https://router.project-osrm.org/route/v1/driving/${currentPos.lng},${currentPos.lat};${passingCity.coords[1]},${passingCity.coords[0]}?overview=full&geometries=geojson`;
 
@@ -312,11 +361,8 @@ window.Game = {
             const res = await fetch(url); const data = await res.json();
             const newDistKm = data.routes[0].distance / 1000;
             const newCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-
-            // Стартуем заново к новой цели с текущей скоростью
             this.startTravel(passingCity, newDistKm, newCoords, this.state.driveMode.speed, this.state.driveMode.gasMult, this.state.driveMode.radMult);
         } catch(e) {
-            this.toast("Сбой навигатора! Возвращаемся на старый маршрут.");
             td.line.addTo(this.map);
             this.resumeTravel();
         }
@@ -329,7 +375,6 @@ window.Game = {
         document.getElementById('travel-hud').style.display = 'none';
         
         line.setStyle({color: '#555', weight: 3, dashArray: '5, 10', opacity: 1});
-
         this.updateMarkers();
         this.updateTopUI();
         
@@ -356,11 +401,21 @@ window.Game = {
         this.state.hotelPaid = false;
         this.state.excPaid = false;
 
+        let cityImgSrc = city.id === "moscow" ? "assets/cities/moscow.png" : `assets/cities/tier${city.tier}.png`;
+        document.getElementById('city-header-img').src = cityImgSrc;
+
         document.getElementById('city-overlay').style.display = 'flex';
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
         document.getElementById('city-fact').innerText = city.fact;
         
+        if (this.state.car.id === "camper" || this.state.car.id === "lada_camper") {
+            document.getElementById('hotel-hint').innerText = `В этой машине можно спать (+${this.state.car.sleepBonus}% бодрости).`;
+        } else {
+            document.getElementById('hotel-hint').innerText = "Сон в этой машине не восстанавливает бодрость.";
+        }
+
+        document.getElementById('btn-leave-city').style.display = 'block';
         this.renderCityShop(city);
     },
 
@@ -372,12 +427,14 @@ window.Game = {
         if (p.hotel > 0) {
             let isFull = this.state.wake >= 100 || this.state.hotelPaid;
             html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hotel}, 100)">
-                <b>Отель</b><small>+100% бодрости</small><span class="price">${p.hotel} <i class="fa-solid fa-coins"></i></span></button>`;
+                <img src="assets/ui/hotel.png" class="btn-shop-img">
+                <div class="btn-shop-content"><b>Гостиница</b><small>+100% бодрости</small><span class="price">${p.hotel} ₽</span></div></button>`;
         }
         if (p.hostel > 0) {
             let isFull = this.state.wake >= 100 || this.state.hotelPaid;
             html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hostel}, 80)">
-                <b>Хостел</b><small>+80% бодрости</small><span class="price">${p.hostel} <i class="fa-solid fa-coins"></i></span></button>`;
+                <img src="assets/ui/hostel.png" class="btn-shop-img">
+                <div class="btn-shop-content"><b>Мотель</b><small>+80% бодрости</small><span class="price">${p.hostel} ₽</span></div></button>`;
         }
         html += `</div></div>`;
 
@@ -385,12 +442,14 @@ window.Game = {
         if (p.rest > 0) {
             let isFull = this.state.food >= 100;
             html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.rest}, 100)">
-                <b>Ресторан</b><small>+100% сытости</small><span class="price">${p.rest} <i class="fa-solid fa-coins"></i></span></button>`;
+                <img src="assets/ui/rest.png" class="btn-shop-img">
+                <div class="btn-shop-content"><b>Ресторан</b><small>+100% сытости</small><span class="price">${p.rest} ₽</span></div></button>`;
         }
         if (p.fastfood > 0) {
             let isFull = this.state.food >= 100;
             html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.fastfood}, 80)">
-                <b>Фастфуд</b><small>+80% сытости</small><span class="price">${p.fastfood} <i class="fa-solid fa-coins"></i></span></button>`;
+                <img src="assets/ui/fastfood.png" class="btn-shop-img">
+                <div class="btn-shop-content"><b>Столовая</b><small>+80% сытости</small><span class="price">${p.fastfood} ₽</span></div></button>`;
         }
         html += `</div></div>`;
 
@@ -398,11 +457,11 @@ window.Game = {
             let missingGas = Math.floor(this.state.car.tank - this.state.gas);
             let fullPrice = missingGas * p.gas;
             let tenPrice = 10 * p.gas;
-            html += `<div class="shop-category"><h4>⛽ АЗС (${p.gas} <i class="fa-solid fa-coins"></i>/л)</h4><div class="btn-group">`;
-            html += `<button class="btn-shop" ${missingGas < 10 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${tenPrice}, 10)">
-                <b>+10 Литров</b><span class="price">${tenPrice} <i class="fa-solid fa-coins"></i></span></button>`;
-            html += `<button class="btn-shop" ${missingGas <= 0 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${fullPrice}, ${missingGas})">
-                <b>Полный бак</b><span class="price">${fullPrice} <i class="fa-solid fa-coins"></i></span></button>`;
+            html += `<div class="shop-category"><h4>⛽ АЗС (${p.gas} ₽/л)</h4><div class="btn-group">`;
+            html += `<button class="btn-shop" style="padding:10px !important" ${missingGas < 10 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${tenPrice}, 10)">
+                <b>+10 Литров</b><span class="price">${tenPrice} ₽</span></button>`;
+            html += `<button class="btn-shop" style="padding:10px !important" ${missingGas <= 0 ? 'disabled' : ''} onclick="Game.buyItem('gas', ${fullPrice}, ${missingGas})">
+                <b>Полный бак</b><span class="price">${fullPrice} ₽</span></button>`;
             html += `</div></div>`;
         }
 
@@ -411,17 +470,17 @@ window.Game = {
             let fullPrice = missingHp * p.repair;
             let tenPrice = 10 * p.repair;
             html += `<div class="shop-category"><h4>🔧 Автосервис</h4><div class="btn-group">`;
-            html += `<button class="btn-shop" ${missingHp < 10 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${tenPrice}, 10)">
-                <b>+10% Ремонта</b><span class="price">${tenPrice} <i class="fa-solid fa-coins"></i></span></button>`;
-            html += `<button class="btn-shop" ${missingHp <= 0 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${fullPrice}, ${missingHp})">
-                <b>Починить всё</b><span class="price">${fullPrice} <i class="fa-solid fa-coins"></i></span></button>`;
+            html += `<button class="btn-shop" style="padding:10px !important" ${missingHp < 10 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${tenPrice}, 10)">
+                <b>+10% Ремонт</b><span class="price">${tenPrice} ₽</span></button>`;
+            html += `<button class="btn-shop" style="padding:10px !important" ${missingHp <= 0 ? 'disabled' : ''} onclick="Game.buyItem('hp', ${fullPrice}, ${missingHp})">
+                <b>Починить всё</b><span class="price">${fullPrice} ₽</span></button>`;
             html += `</div></div>`;
         }
 
         if (p.exc > 0) {
             html += `<div class="shop-category" style="border:none;"><h4>🎫 Культура</h4><div class="btn-group">`;
-            html += `<button class="btn-shop ${this.state.excPaid ? 'purchased' : ''}" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.buyItem('exc', ${p.exc}, 0)">
-                <b>Экскурсия</b><small>Для Карточки Города</small><span class="price">${p.exc} <i class="fa-solid fa-coins"></i></span></button>`;
+            html += `<button class="btn-shop ${this.state.excPaid ? 'purchased' : ''}" style="padding:10px !important" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.buyItem('exc', ${p.exc}, 0)">
+                <b>Взять Экскурсию</b><small>Для Альбома</small><span class="price">${p.exc} ₽</span></button>`;
             html += `</div></div>`;
         }
 
@@ -442,7 +501,7 @@ window.Game = {
         
         if (this.state.hotelPaid && this.state.excPaid && !this.state.collected.includes(this.state.currentCity.id)) {
             this.state.collected.push(this.state.currentCity.id);
-            this.toast("Карточка города добавлена в Альбом!");
+            this.toast("Условия выполнены! Карточка добавлена в Альбом!");
             this.updateMarkers();
         }
 
@@ -480,6 +539,9 @@ window.Game = {
     },
 
     showQuest: function(city) {
+        let guideImg = Math.random() > 0.5 ? "guide_m.png" : "guide_f.png";
+        document.getElementById('quest-guide-img').src = `assets/quests/${guideImg}`;
+
         let q = city.quests[0];
         document.getElementById('quest-text').innerText = q.q;
         let ansDiv = document.getElementById('quest-answers'); ansDiv.innerHTML = '';
