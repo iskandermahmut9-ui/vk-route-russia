@@ -8,7 +8,6 @@ window.Game = {
         isMoving: false, hotelPaid: false, excPaid: false,
         driveMode: null, travelData: null, qteActive: false,
         newMedalCity: null,
-        // Счетчики для 100% появления событий
         kmSinceEvent: 0, kmSinceQTE: 0
     },
 
@@ -81,7 +80,6 @@ window.Game = {
             let tierClass = c.tier === 1 ? 'marker-tier-1' : (c.tier === 2 ? 'marker-tier-2' : 'marker-tier-3');
             if (isHidden) tierClass += ' hidden-tier';
             
-            // ВЕРНУЛИ АККУРАТНЫЕ ПИНЫ НА КАРТУ
             let icon = L.divIcon({ 
                 className: `map-pin ${tierClass}`, 
                 html: '<i class="fa-solid fa-location-dot"></i>', 
@@ -92,9 +90,13 @@ window.Game = {
 
             m.on('click', () => {
                 if (this.state.isMoving) return;
-                if (!this.state.currentCity) this.setStartCity(c);
-                else {
-                    if (this.state.currentCity.id === c.id) return;
+                
+                if (!this.state.currentCity) {
+                    this.setStartCity(c);
+                } else if (this.state.currentCity.id === c.id) {
+                    // ВОЗВРАТ В ГОРОД ПО КЛИКУ НА МАРКЕР
+                    this.openCityUI(c);
+                } else {
                     this.confirmTravel(c);
                 }
             });
@@ -110,7 +112,7 @@ window.Game = {
         this.carMarker = L.marker(city.coords, {icon: carIcon}).addTo(this.map);
 
         document.getElementById('city-overlay').style.display = 'none';
-        this.toast(`Старт задан. Выберите следующую цель на карте!`);
+        this.toast(`Старт из г. ${city.name}. Выберите следующую цель на карте!`);
     },
 
     confirmTravel: async function(targetCity) {
@@ -127,7 +129,7 @@ window.Game = {
             
             let modesHtml = `
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 70, 1.0, 1.5)">
-                    <h3 style="color:#8BC34A;">Релакс (70 км/ч)</h3><p>Больше интерактива на дороге.</p></div>
+                    <h3 style="color:#8BC34A;">Релакс (70 км/ч)</h3><p>Много интерактива, долгий путь.</p></div>
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 100, 1.0, 1.0)">
                     <h3 style="color:#2196F3;">Оптимальный (100 км/ч)</h3><p>Баланс времени и событий.</p></div>
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 140, 1.5, 0)">
@@ -196,13 +198,11 @@ window.Game = {
             this.state.kmSinceQTE += tickKm;
             document.getElementById('hud-dist').innerText = Math.round(td.kmPassedTotal);
 
-            // Траты ресурсов
             let wakeDrain = (tickKm / 700) * 100;
             let foodDrain = (tickKm / 700) * 100 * (this.state.car.id !== "bike" ? 1 : 2);
             let gasDrain = this.state.car.id !== "bike" ? (this.state.car.cons / 100) * tickKm * this.state.driveMode.gasMult : 0;
             let hpDrain = (tickKm / 100) * this.state.car.hpLoss;
 
-            // Жестко блокируем минусы
             this.state.wake = Math.max(0, this.state.wake - wakeDrain);
             this.state.food = Math.max(0, this.state.food - foodDrain);
             this.state.gas = Math.max(0, this.state.gas - gasDrain);
@@ -210,9 +210,9 @@ window.Game = {
 
             this.updateTopUI();
 
-            // === ИДЕАЛЬНАЯ ЛОГИКА ОКОНЧАНИЯ БЕНЗИНА ===
+            // ИДЕАЛЬНАЯ ЛОГИКА ОКОНЧАНИЯ БЕНЗИНА
             if (this.state.gas <= 0 && this.state.car.id !== "bike") {
-                clearInterval(this.animationInterval);
+                clearInterval(this.animationInterval); // ПАУЗА ДВИЖЕНИЯ
                 this.state.isMoving = false;
                 
                 document.getElementById('event-img').src = `assets/events/moshen.png`;
@@ -222,7 +222,6 @@ window.Game = {
                 let actionsDiv = document.getElementById('event-actions');
                 actionsDiv.innerHTML = '';
                 
-                // Вариант 1: Барыга (140 монет)
                 let btnBuy = document.createElement('button');
                 btnBuy.className = 'btn-action';
                 btnBuy.innerText = "Купить 10л (140 🪙)";
@@ -233,14 +232,13 @@ window.Game = {
                         this.playFloatingText("-140 🪙", false);
                         this.updateTopUI();
                         document.getElementById('event-modal').style.display='none';
-                        this.resumeTravel();
+                        this.resumeTravel(); // ВОЗОБНОВЛЯЕМ
                     } else {
                         this.toast("У вас нет 140 монет! Ищите другой выход.");
                     }
                 };
                 actionsDiv.appendChild(btnBuy);
 
-                // Вариант 2: Эвакуатор
                 let adLimitStr = `[Осталось ${MAX_ADS_PER_DAY - this.state.adsWatched}]`;
                 let btnTow = document.createElement('button');
                 btnTow.className = 'btn-action';
@@ -258,7 +256,6 @@ window.Game = {
                 };
                 actionsDiv.appendChild(btnTow);
 
-                // Вариант 3: Конец игры
                 let btnDie = document.createElement('button');
                 btnDie.className = 'btn-action btn-leave';
                 btnDie.innerText = "Сдаться (Начать заново)";
@@ -269,18 +266,19 @@ window.Game = {
                 return;
             }
 
-            // Штраф за сон
             if (this.state.wake <= 0) td.stepInc = (td.coords.length / totalTicks) * 0.2; 
 
-            // === ГАРАНТИРОВАННЫЙ ИНТЕРАКТИВ (ПО КИЛОМЕТРАЖУ) ===
+            // СТРОГИЕ ИНТЕРВАЛЫ ПОЯВЛЕНИЯ СОБЫТИЙ (ЧТОБЫ ВЫ ИХ ТОЧНО ВСТРЕТИЛИ)
             if (this.state.kmSinceQTE >= 70 && !this.state.qteActive) {
                 this.state.kmSinceQTE = 0;
+                clearInterval(this.animationInterval); // ПАУЗА ПЕРЕД QTE
                 this.spawnQTE();
+                return;
             }
 
             if (this.state.kmSinceEvent >= 150 && !this.state.qteActive) {
                 this.state.kmSinceEvent = 0;
-                clearInterval(this.animationInterval);
+                clearInterval(this.animationInterval); // ПАУЗА ПЕРЕД СЮЖЕТОМ
                 this.state.isMoving = false;
                 this.triggerStoryEvent();
                 return;
@@ -328,7 +326,7 @@ window.Game = {
         this.carMarker.setLatLng(closestCity.coords);
         this.map.panTo(closestCity.coords);
         
-        this.state.gas = 2; // Чуть бензина для выживания
+        this.state.gas = 2; 
         this.finishTravel(closestCity, currentLine); 
     },
 
@@ -345,7 +343,7 @@ window.Game = {
         
         layer.innerHTML = `
             <div class="qte-container">
-                <button id="qte-btn" style="font-size: 50px; padding: 20px; border-radius: 50%; width: 120px; height: 120px; border: 5px solid #fff; cursor: pointer; box-shadow: 0 0 30px rgba(0,0,0,0.9); animation: pulse 0.5s infinite alternate; background: ${qte.color}; color: #fff;">
+                <button id="qte-btn" style="font-size: 50px; padding: 20px; border-radius: 50%; width: 120px; height: 120px; border: 5px solid #fff; cursor: pointer; box-shadow: 0 0 30px rgba(0,0,0,0.9); background: ${qte.color}; color: #fff;">
                     <i class="fa-solid ${qte.icon}"></i>
                 </button>
                 <div class="qte-warning">${qte.text}</div>
@@ -369,17 +367,19 @@ window.Game = {
                 btnOk.className = 'btn-action'; btnOk.innerText = "ОТЛИЧНО";
                 btnOk.onclick = () => {
                     this.state.coins += qte.bonus.coins; 
-                    this.state.rating += qte.bonus.rating; // +5 Очков Блогера
+                    this.state.rating += qte.bonus.rating; 
                     this.playFloatingText(`+${qte.bonus.coins} 🪙`, true);
                     this.playFloatingText(`+${qte.bonus.rating} 📸`, true);
                     this.updateTopUI();
                     document.getElementById('event-modal').style.display = 'none';
+                    this.resumeTravel(); // МАШИНА СНЯТА С ПАУЗЫ
                 };
                 document.getElementById('event-actions').innerHTML = '';
                 document.getElementById('event-actions').appendChild(btnOk);
                 document.getElementById('event-modal').style.display = 'flex';
             } else {
                 this.toast("Увернулись!");
+                this.resumeTravel(); // МАШИНА СНЯТА С ПАУЗЫ
             }
         };
 
@@ -398,10 +398,15 @@ window.Game = {
                     
                     let btnOk = document.createElement('button');
                     btnOk.className = 'btn-action'; btnOk.innerText = "ПОНЯТНО";
-                    btnOk.onclick = () => { document.getElementById('event-modal').style.display = 'none'; };
+                    btnOk.onclick = () => { 
+                        document.getElementById('event-modal').style.display = 'none'; 
+                        this.resumeTravel(); // МАШИНА СНЯТА С ПАУЗЫ
+                    };
                     document.getElementById('event-actions').innerHTML = '';
                     document.getElementById('event-actions').appendChild(btnOk);
                     document.getElementById('event-modal').style.display = 'flex';
+                } else {
+                    this.resumeTravel();
                 }
             }
         }, 2000);
@@ -409,9 +414,19 @@ window.Game = {
 
     triggerStoryEvent: function() {
         let ev = Data.events[Math.floor(Math.random() * Data.events.length)];
+        
+        // Особая логика для полиции (превышение скорости)
         if (ev.id === "police") {
-            if (this.state.driveMode.speed === 140) ev.choices[0].msg = "Штраф за превышение: -500 монет!";
-            else ev.choices[0].msg = "Счастливого пути. Вы потеряли немного времени.";
+            if (this.state.driveMode.speed === 140) {
+                ev.desc = "ВЫ ПРЕВЫСИЛИ СКОРОСТЬ! Инспектор требует 500 монет.";
+                ev.choices = [{ text: "Оплатить штраф (500)", action: "police_pay", cost: 500, val: 0, msg: "Вы оплатили огромный штраф." }];
+            } else {
+                ev.desc = "Инспектор намекает на 'штраф на месте' за грязные номера (100 монет).";
+                ev.choices = [
+                    { text: "Дать взятку (100)", action: "coins", cost: 100, val: 0, msg: "Вы откупились и поехали дальше." },
+                    { text: "Качать права", action: "mixed_road", cost: 0, val: 0, msg: "Вас продержали 2 часа. Вы устали и проголодались (-20% еды и бодрости)." }
+                ];
+            }
         }
 
         document.getElementById('event-img').src = `assets/events/${ev.img}`;
@@ -445,7 +460,7 @@ window.Game = {
                 if (choice.action === "mixed_road") { this.state.wake = Math.max(0, this.state.wake - 20); this.state.food = Math.max(0, this.state.food - 20); }
                 if (choice.action === "mixed_grandpa") { this.state.coins += 200; this.state.gas = Math.max(0, this.state.gas - 5); this.playFloatingText(`+200 🪙`, true); }
                 if (choice.action === "mixed_cake") { this.state.food = 100; if(Math.random() > 0.5) this.state.wake = 0; }
-                if (choice.action === "police" && this.state.driveMode.speed === 140) { this.state.coins = Math.max(0, this.state.coins - 500); this.playFloatingText(`-500 🪙`, false); }
+                if (choice.action === "police_pay") { /* деньги уже списаны */ }
                 
                 if (choice.action === "secret") {
                     this.state.food = Math.max(0, this.state.food - 20);
@@ -461,7 +476,7 @@ window.Game = {
                 this.toast(choice.msg);
                 this.updateTopUI();
                 document.getElementById('event-modal').style.display = 'none';
-                this.resumeTravel(); 
+                this.resumeTravel(); // МАШИНА СНЯТА С ПАУЗЫ
             };
             document.getElementById('event-actions').appendChild(btn);
         });
@@ -501,7 +516,7 @@ window.Game = {
         let drivenLine = L.polyline(drivenCoords, {color: '#555', weight: 3, dashArray: '5, 10'}).addTo(this.map);
         this.routeLines.push(drivenLine);
 
-        this.toast(`Едем в ${passingCity.name}...`);
+        this.toast(`Перестраиваем маршрут в ${passingCity.name}...`);
         const url = `https://router.project-osrm.org/route/v1/driving/${currentPos.lng},${currentPos.lat};${passingCity.coords[1]},${passingCity.coords[0]}?overview=full&geometries=geojson`;
 
         try {
@@ -523,8 +538,14 @@ window.Game = {
         
         if(line) line.setStyle({color: '#555', weight: 3, dashArray: '5, 10', opacity: 1});
         this.updateMarkers();
-        this.updateTopUI();
         
+        // ПОДСВЕТКА ТЕКУЩЕГО ГОРОДА
+        Object.keys(this.markers).forEach(id => {
+            this.markers[id].getElement().classList.remove('marker-current');
+            if (id === city.id) this.markers[id].getElement().classList.add('marker-current');
+        });
+
+        this.updateTopUI();
         this.openCityUI(city);
     },
 
@@ -547,6 +568,8 @@ window.Game = {
         document.getElementById('city-header-img').src = cityImgSrc;
 
         document.getElementById('city-overlay').style.display = 'flex';
+        document.querySelector('.city-panel').scrollTop = 0; // АВТОСКРОЛЛ НАВЕРХ
+
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
         document.getElementById('city-fact').innerText = city.fact;
@@ -580,7 +603,7 @@ window.Game = {
         const p = Data.prices[city.tier];
         let html = "";
 
-        // МАГАЗИН БЕЗ РАМОК, ТЕКСТ НАД КАРТИНКАМИ
+        // МАГАЗИН (Баланс 60% и 50%)
         html += `<div class="shop-category"><h4>🛏️ Ночлег</h4><div class="btn-group">`;
         if (p.hotel > 0) {
             let isFull = this.state.wake >= 100 || this.state.hotelPaid;
@@ -590,9 +613,9 @@ window.Game = {
         }
         if (p.hostel > 0) {
             let isFull = this.state.wake >= 100 || this.state.hotelPaid;
-            html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hostel}, 80, 'assets/ui/hostel.png')">
+            html += `<button class="btn-shop ${this.state.hotelPaid ? 'purchased' : ''}" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('hotel', ${p.hostel}, 60, 'assets/ui/hostel.png')">
                 <img src="assets/ui/hostel.png" class="btn-shop-img">
-                <div class="btn-shop-title">Мотель</div><div class="btn-shop-desc">+80% бодрости</div><div class="btn-shop-price">${p.hostel} 🪙</div></button>`;
+                <div class="btn-shop-title">Мотель</div><div class="btn-shop-desc">+60% бодрости</div><div class="btn-shop-price">${p.hostel} 🪙</div></button>`;
         }
         html += `</div></div>`;
 
@@ -605,9 +628,9 @@ window.Game = {
         }
         if (p.fastfood > 0) {
             let isFull = this.state.food >= 100;
-            html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.fastfood}, 80, 'assets/ui/fastfood.png')">
+            html += `<button class="btn-shop" ${isFull ? 'disabled' : ''} onclick="Game.buyItem('food', ${p.fastfood}, 50, 'assets/ui/fastfood.png')">
                 <img src="assets/ui/fastfood.png" class="btn-shop-img">
-                <div class="btn-shop-title">Столовая</div><div class="btn-shop-desc">+80% сытости</div><div class="btn-shop-price">${p.fastfood} 🪙</div></button>`;
+                <div class="btn-shop-title">Столовая</div><div class="btn-shop-desc">+50% сытости</div><div class="btn-shop-price">${p.fastfood} 🪙</div></button>`;
         }
         html += `</div></div>`;
 
@@ -677,23 +700,6 @@ window.Game = {
         setTimeout(() => el.remove(), 1500);
     },
 
-    // НАСТОЯЩИЙ ФЕЙЕРВЕРК ЧАСТИЦАМИ ИЗ ЦЕНТРА
-    playFireworks: function() {
-        for (let i = 0; i < 40; i++) {
-            let p = document.createElement('div');
-            p.className = 'firework-particle';
-            p.style.left = '50%';
-            p.style.top = '50%';
-            let angle = Math.random() * Math.PI * 2;
-            let velocity = 50 + Math.random() * 150;
-            p.style.setProperty('--dx', Math.cos(angle) * velocity + 'px');
-            p.style.setProperty('--dy', Math.sin(angle) * velocity + 'px');
-            p.style.color = ['#FFD700', '#FF5722', '#4CAF50', '#2196F3'][Math.floor(Math.random()*4)];
-            document.body.appendChild(p);
-            setTimeout(() => p.remove(), 1200);
-        }
-    },
-
     startExcursion: function(price) {
         if (this.state.coins < price) { this.toast("Не хватает монет!"); return; }
         
@@ -714,13 +720,11 @@ window.Game = {
             b.onclick = () => {
                 document.getElementById('quest-modal').style.display = 'none';
                 if(i === q.right) { 
-                    // +1 ОЧКО БЛОГЕРА ЗА ОТВЕТ НА ЭКСКУРСИИ
                     this.state.rating += 1; 
                     this.playFloatingText(`+1 📸`, true);
-                    this.playFireworks();
-                    this.toast("Верный ответ!");
+                    this.toast("Верный ответ! +1 Очко Блогера.");
                 } else { 
-                    this.toast("Неверный ответ!"); 
+                    this.toast("Неверный ответ! Очков нет."); 
                 }
                 
                 this.state.excPaid = true;
@@ -751,7 +755,7 @@ window.Game = {
                 this.state.wake = Math.min(100, this.state.wake + this.state.car.sleepBonus);
                 this.toast(`Ночевка в машине (+${this.state.car.sleepBonus}% бодрости).`);
             } else {
-                this.toast("Вы не отдохнули. Будьте осторожны на трассе!");
+                this.toast("Сон в этой машине не восстанавливает силы.");
             }
         }
         this.updateTopUI();
@@ -813,10 +817,13 @@ window.Game = {
         document.getElementById('album-modal').style.display = 'flex';
     },
 
+    // НОВЫЕ ДОЛГИЕ УВЕДОМЛЕНИЯ БЕЗ НАЛОЖЕНИЯ
     toast: function(msg) {
         let c = document.getElementById('toast-container');
+        c.innerHTML = ''; // Стираем старое, чтобы успеть прочесть новое
         let t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
-        c.appendChild(t); setTimeout(() => t.remove(), 4000);
+        c.appendChild(t); 
+        setTimeout(() => t.remove(), 6000); // Висит целых 6 секунд
     },
 
     bindEvents: function() {
