@@ -104,11 +104,13 @@
 </div>
 
 <div id="event-modal" class="modal-overlay">
-    <div class="modal-box">
-        <img id="event-img" src="" class="event-image" alt="">
-        <div class="modal-head" id="event-title" style="color: #FFD700; margin-top: 15px;">СОБЫТИЕ</div>
-        <p id="event-desc" style="font-size: 15px; margin-bottom: 25px; line-height: 1.5; color: #fff;"></p>
-        <div id="event-actions" style="display: flex; gap: 10px; flex-direction: column;"></div>
+    <div class="event-modal-wrapper">
+        <img id="event-img" src="" class="event-character-img" alt="">
+        <div class="event-text-bg">
+            <div class="modal-head" id="event-title" style="color: #FFD700; margin-top:0;">СОБЫТИЕ</div>
+            <p id="event-desc" style="font-size: 15px; margin-bottom: 25px; line-height: 1.5; color: #fff;"></p>
+            <div id="event-actions" style="display: flex; gap: 10px; flex-direction: column;"></div>
+        </div>
     </div>
 </div>
 
@@ -124,11 +126,13 @@
 </div>
 
 <div id="quest-modal" class="modal-overlay">
-    <div class="modal-box">
-        <img id="quest-guide-img" src="" class="guide-image" alt="Guide">
-        <div class="modal-head" style="color:#FFD700; margin-top: 10px;">ЭКСКУРСИЯ: <span id="quest-city-name"></span></div>
-        <div id="quest-text" style="font-size: 15px; margin-bottom: 20px;"></div>
-        <div id="quest-answers" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    <div class="event-modal-wrapper">
+        <img id="quest-guide-img" src="" class="event-character-img" alt="Guide">
+        <div class="event-text-bg">
+            <div class="modal-head" style="color:#FFD700; margin-top: 0;">ЭКСКУРСИЯ: <span id="quest-city-name"></span></div>
+            <div id="quest-text" style="font-size: 15px; margin-bottom: 20px;"></div>
+            <div id="quest-answers" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
     </div>
 </div>
 
