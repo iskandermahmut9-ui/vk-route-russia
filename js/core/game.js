@@ -36,11 +36,10 @@ export const Game = {
             console.log("Демо-режим"); 
             vkUserId = 123456789; 
         }
-        // Если игрок был в каком-то городе, ставим туда машину
-            // Если игрок был в каком-то городе, ставим туда БОЛЬШУЮ машину
+        // Если игрок был в каком-то городе, ставим туда БОЛЬШУЮ машину
             if (this.state.currentCity) {
                 let carIcon = L.divIcon({
-                    className: 'marker-car', 
+                    className: 'marker-car leaflet-interactive', 
                     html: `<img src="assets/cars/${this.state.car.img}" style="width: 80px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7)); pointer-events: auto;">`
                 });
                 
@@ -48,7 +47,11 @@ export const Game = {
                 
                 // Восстанавливаем клик после загрузки страницы
                 this.carMarker.on('click', () => {
-                    if (!this.state.isMoving) this.openTrunk();
+                    if (!this.state.isMoving) {
+                        this.openTrunk();
+                    } else {
+                        this.toast("На скорости в багажник не лезут!");
+                    }
                 });
             }
 

@@ -41,16 +41,16 @@ export const MapModule = {
         this.state.history.push(city.id);
         this.updateMarkers();
         
-        // ДЕЛАЕМ МАШИНУ 80px (В 2 раза больше)
+        // ДОБАВЛЕН КЛАСС leaflet-interactive И УВЕЛИЧЕН РАЗМЕР (80px)
         let carIcon = L.divIcon({
-            className: 'marker-car', 
+            className: 'marker-car leaflet-interactive', 
             html: `<img src="assets/cars/${this.state.car.img}" style="width: 80px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7)); pointer-events: auto;">`
         });
         
-        // ВАЖНО: interactive: true 
+        // INTERACTIVE: TRUE
         this.carMarker = L.marker(city.coords, {icon: carIcon, interactive: true, zIndexOffset: 1000}).addTo(this.map);
         
-        // ВАЖНО: Вешаем клик, открывающий багажник
+        // ВЕШАЕМ КЛИК
         this.carMarker.on('click', () => {
             if (!this.state.isMoving) {
                 this.openTrunk();
