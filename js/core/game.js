@@ -42,6 +42,8 @@ export const Game = {
         this.renderMap();
         this.bindEvents();
 
+        this.toast("Синхронизация с сервером..."); // Показываем игроку, что идет загрузка
+
         // 2. Идем в базу данных за сохранением
         await this.initStorage(vkUserId);
 
@@ -50,10 +52,11 @@ export const Game = {
 
         // 4. Распределяем логику: новая игра или продолжение
         if (!this.state.car) {
-            // Новая игра - выбираем машину
+            // Новая игра - показываем выбор машины
             document.getElementById('difficulty-modal').style.display = 'flex';
         } else {
-            // Продолжение - показываем ресурсы
+            // Продолжение - ЖЕСТКО ПРЯЧЕМ окно выбора и показываем ресурсы
+            document.getElementById('difficulty-modal').style.display = 'none';
             document.getElementById('resource-panel').style.display = 'flex';
             this.updateTopUI();
             
