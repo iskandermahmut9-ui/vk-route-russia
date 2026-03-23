@@ -17,7 +17,7 @@ export const UIModule = {
             div.onclick = () => {
                 this.state.car = car;
                 this.state.gas = car.tank;
-                this.state.inventory = []; // Инициализируем пустой багажник
+                this.state.inventory = []; 
                 document.getElementById('garage-modal').style.display = 'none';
                 document.getElementById('resource-panel').style.display = 'flex';
                 this.updateTopUI();
@@ -46,8 +46,6 @@ export const UIModule = {
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
         document.getElementById('city-fact').innerText = city.fact;
-        
-        // ❌ ЗДЕСЬ БЫЛ БАГ С HOTEL-HINT. ОН УДАЛЕН. ❌
 
         let btnAd = document.getElementById('btn-city-ad');
         btnAd.innerText = `РЕКЛАМА (+500 🪙) [${this.maxAdsPerDay - this.state.adsWatched}]`;
@@ -65,16 +63,13 @@ export const UIModule = {
             }
         };
 
-        // Гарантированно показываем кнопку выхода
         document.getElementById('btn-leave-city').style.display = 'block';
 
-        // СБРОС ВКЛАДОК (Всегда открываем "Услуги" первой)
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         document.querySelector('[data-tab="tab-services"]').classList.add('active');
         document.getElementById('tab-services').classList.add('active');
 
-        // Отрисовка магазинов и квестов
         this.renderCityShop(city);
         this.renderCityMayor(city);
     },
@@ -145,10 +140,28 @@ export const UIModule = {
         document.getElementById('car-modal').style.display = 'flex';
     },
 
+    // ФИКС СБРОСА: Теперь стирается вообще всё, до заводских настроек!
     resetProgress: function() {
         this.showConfirm("НАЧАТЬ ЗАНОВО?", "Вы потеряете все монеты, товары, авто и альбом. Начать чистую игру?", async () => {
-            this.state.car = null; 
+            this.state.coins = 1500;
+            this.state.gas = 0;
+            this.state.food = 100;
+            this.state.wake = 100;
+            this.state.hp = 100;
+            this.state.rating = 0;
+            this.state.car = null;
+            this.state.diff = null;
+            this.state.currentCity = null;
+            this.state.history = [];
+            this.state.collected = [];
+            this.state.discovered = [];
             this.state.inventory = [];
+            this.state.hotelPaid = false;
+            this.state.excPaid = false;
+            this.state.isMoving = false;
+            this.state.kmSinceEvent = 0;
+            this.state.kmSinceQTE = 0;
+            
             localStorage.clear();  
             await this.saveGame(); 
             window.location.reload(); 
@@ -210,7 +223,6 @@ export const UIModule = {
         c.innerHTML = ''; 
         let t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
         c.appendChild(t); 
-        // 🛠 ФИКС ЗАВИСАНИЯ ПЛАШКИ: Теперь она исчезает сама через 2.5 секунды
         setTimeout(() => { if (t.parentNode) t.remove(); }, 2500);
     },
 

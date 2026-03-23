@@ -62,10 +62,14 @@ export const EventsModule = {
     triggerStoryEvent: function() {
         let ev = storyEvents[Math.floor(Math.random() * storyEvents.length)];
         
+        // ФИКС ПОЛИЦИИ: Добавлен выбор "Арест", чтобы не застревать без денег
         if (ev.id === "police") {
             if (this.state.driveMode.speed === 140) {
                 ev.desc = "ВЫ ПРЕВЫСИЛИ СКОРОСТЬ! Инспектор требует 500 монет.";
-                ev.choices = [{ text: "Оплатить штраф (500)", action: "police_pay", cost: 500, val: 0, msg: "Вы оплатили огромный штраф." }];
+                ev.choices = [
+                    { text: "Оплатить штраф (500)", action: "police_pay", cost: 500, val: 0, msg: "Вы оплатили огромный штраф." },
+                    { text: "Арест (-100% бодрости и еды)", action: "arrest", cost: 0, val: 0, msg: "Вас продержали сутки в ИВС. Вы истощены." }
+                ];
             } else {
                 ev.desc = "Инспектор намекает на 'штраф на месте' за грязные номера (100 монет).";
                 ev.choices = [
@@ -107,6 +111,12 @@ export const EventsModule = {
                 if (choice.action === "mixed_grandpa") { this.state.coins += 200; this.state.gas = Math.max(0, this.state.gas - 5); this.playFloatingText(`+200 🪙`, true); }
                 if (choice.action === "mixed_cake") { this.state.food = 100; if(Math.random() > 0.5) this.state.wake = 0; }
                 
+                // ЛОГИКА АРЕСТА
+                if (choice.action === "arrest") {
+                    this.state.wake = 0;
+                    this.state.food = 0;
+                }
+
                 if (choice.action === "secret") {
                     this.state.food = Math.max(0, this.state.food - 20);
                     let hiddenCity = cfoCities.find(c => c.tier === 3 && !this.state.discovered.includes(c.id));

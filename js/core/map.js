@@ -2,7 +2,6 @@ import { cfoCities } from '../data/regions/cfo.js';
 
 export const MapModule = {
     initMap: function() {
-        // Карта остается прежней
         this.map = L.map('map', { zoomControl: false }).setView([55.75, 38.0], 6);
         L.control.zoom({position: 'topright'}).addTo(this.map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
@@ -41,16 +40,16 @@ export const MapModule = {
         this.state.history.push(city.id);
         this.updateMarkers();
         
-        // ДОБАВЛЕН КЛАСС leaflet-interactive И УВЕЛИЧЕН РАЗМЕР (80px)
+        // ФИКС ЗОНЫ КЛИКА: Добавлен iconSize
         let carIcon = L.divIcon({
             className: 'marker-car leaflet-interactive', 
+            iconSize: [80, 40], 
+            iconAnchor: [40, 20],
             html: `<img src="assets/cars/${this.state.car.img}" style="width: 80px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7)); pointer-events: auto;">`
         });
         
-        // INTERACTIVE: TRUE
         this.carMarker = L.marker(city.coords, {icon: carIcon, interactive: true, zIndexOffset: 1000}).addTo(this.map);
         
-        // ВЕШАЕМ КЛИК
         this.carMarker.on('click', () => {
             if (!this.state.isMoving) {
                 this.openTrunk();
@@ -65,7 +64,6 @@ export const MapModule = {
     },
 
     confirmTravel: async function(targetCity) {
-        // Логика маршрута без изменений
         const start = this.state.currentCity.coords;
         const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${targetCity.coords[1]},${targetCity.coords[0]}?overview=full&geometries=geojson`;
         
@@ -130,8 +128,6 @@ export const MapModule = {
 
         this.state.isMoving = true;
         document.getElementById('travel-hud').style.display = 'block';
-        
-        // ЗАКРЫВАЕМ ПАСПОРТ МАШИНЫ, ЕСЛИ ОН ОТКРЫТ
         document.getElementById('car-modal').style.display = 'none';
 
         this.animationInterval = setInterval(() => {
@@ -171,7 +167,7 @@ export const MapModule = {
                 clearInterval(this.animationInterval); 
                 this.state.isMoving = false;
                 
-                document.getElementById('event-img').src = `assets/events/evakuator.png`; // Сменим картинку
+                document.getElementById('event-img').src = `assets/events/evakuator.png`; 
                 document.getElementById('event-title').innerText = "БАК ПУСТ!";
                 document.getElementById('event-desc').innerText = "Машина заглохла. Либо вызывайте эвакуатор, либо платите мутному типу на обочине за 10 литров бодяги.";
                 
@@ -203,7 +199,7 @@ export const MapModule = {
                 let btnDie = document.createElement('button');
                 btnDie.className = 'btn-action btn-leave reset-btn';
                 btnDie.innerText = "Сдаться (Начать заново)";
-                btnDie.onclick = () => { window.location.reload(); };
+                btnDie.onclick = () => { this.resetProgress(); }; // Изменено на правильный сброс
                 actionsDiv.appendChild(btnDie);
 
                 document.getElementById('event-modal').style.display = 'flex';
