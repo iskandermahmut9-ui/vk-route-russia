@@ -17,7 +17,7 @@
     <div class="header-left">
         <div class="logo">МАРШРУТЫ 🚙</div>
         <button id="btn-album" class="btn-icon" title="Альбом"><i class="fa-solid fa-images"></i> Альбом</button>
-        <button id="btn-reset" class="btn-icon" style="margin-left: 10px; background: rgba(244, 67, 54, 0.2); color: #F44336;" title="Начать заново"><i class="fa-solid fa-power-off"></i></button>
+        <button id="btn-reset" class="btn-icon reset-btn" title="Начать заново"><i class="fa-solid fa-power-off"></i></button>
     </div>
     
     <div class="header-center" id="resource-panel" style="display: none;">
@@ -44,17 +44,15 @@
     <div id="city-overlay" class="city-overlay" style="display: none;">
         <div class="city-panel modern-panel">
             <div class="city-header-block">
-                <img id="city-header-img" src="" alt="City">
-                <div class="city-header-info">
+                <img id="city-header-img" src="" alt="City PNG"> <div class="city-header-info">
                     <h2 id="city-name" class="city-title">Город</h2>
                     <span id="city-tier" class="tier-badge">Уровень</span>
                 </div>
             </div>
             
             <div class="tabs-nav">
-                <button class="tab-btn active" data-tab="tab-services">УСЛУГИ</button>
-                <button class="tab-btn" data-tab="tab-market">РЫНОК</button>
-                <button class="tab-btn" data-tab="tab-mayor">МЭРИЯ</button>
+                <button class="tab-btn active" data-tab="tab-services"><i class="fa-solid fa-shop"></i> УСЛУГИ</button>
+                <button class="tab-btn" data-tab="tab-market"><i class="fa-solid fa-box-open"></i> ТОРГОВЛЯ</button> <button class="tab-btn" data-tab="tab-contracts"><i class="fa-solid fa-file-contract"></i> БИРЖА</button> <button class="tab-btn" data-tab="tab-mayor"><i class="fa-solid fa-landmark"></i> ИНФО</button>
             </div>
 
             <div class="tabs-container">
@@ -66,47 +64,51 @@
                     <div id="city-market"></div>
                 </div>
 
+                <div id="tab-contracts" class="tab-content">
+                    <div class="coming-soon">
+                        <i class="fa-solid fa-truck-fast"></i>
+                        <h3>Биржа Контрактов</h3>
+                        <p>Здесь появятся миссии по срочной доставке грузов. Логистика в разработке!</p>
+                    </div>
+                </div>
+
                 <div id="tab-mayor" class="tab-content">
                     <p id="city-fact" class="city-fact"></p>
-                    <p style="font-size:12px; color:#FF9800; font-weight:bold; margin-bottom:15px; text-align:center;">*Для карточки в Альбом нужны Ночлег и Экскурсия</p>
                     <div id="city-quests"></div>
                 </div>
             </div>
             
             <div class="city-footer">
-                <p id="hotel-hint" class="hint-text" style="text-align:center; margin-bottom:10px; font-size: 12px;"></p>
                 <button class="btn-action btn-ad" id="btn-city-ad"><i class="fa-solid fa-play"></i> РЕКЛАМА (+500 <i class="fa-solid fa-coins"></i>)</button>
-                <button class="btn-action btn-leave" id="btn-leave-city" style="display:none; font-size: 16px;">ВЫЕХАТЬ ИЗ ГОРОДА <i class="fa-solid fa-arrow-right"></i></button>
+                <button class="btn-action btn-leave" id="btn-leave-city" style="display:none;"><i class="fa-solid fa-arrow-right-from-bracket"></i> ВЫЕХАТЬ НА ТРАССУ</button>
             </div>
         </div>
     </div>
 
     <div id="car-modal" class="modal-overlay" style="display:none; z-index: 2000;">
-        <div class="modal-box" style="max-width: 800px; padding: 0; overflow: hidden; background: #1c1c1c;">
-            <div style="background: #2a2a2a; padding: 20px; border-bottom: 2px solid #444; display: flex; justify-content: space-between; align-items: center;">
-                <div style="color:#FF9800; font-family: 'Russo One'; font-size: 24px;" id="car-sheet-name">Моя Машина</div>
+        <div class="modal-box car-sheet-box">
+            <div class="modal-head-sheet">
+                <div class="car-title-block">
+                    <i class="fa-solid fa-car-on"></i>
+                    <span id="car-sheet-name">Паспорт Машины</span>
+                </div>
                 <button class="btn-icon" onclick="document.getElementById('car-modal').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
-            <div style="display: flex; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 250px; padding: 20px; border-right: 1px solid #333; background: rgba(0,0,0,0.2);">
-                    <img id="car-sheet-img" src="" style="width: 100%; height: 150px; object-fit: contain; margin-bottom: 15px; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));">
-                    <div style="text-align: left; font-size: 13px; color: #aaa; line-height: 1.8;">
-                        <div><i class="fa-solid fa-gas-pump" style="color: #FF5722;"></i> Бак: <b id="car-sheet-tank" style="color:#fff;"></b> л.</div>
-                        <div><i class="fa-solid fa-fire-flame-simple" style="color: #FFEB3B;"></i> Расход: <b id="car-sheet-cons" style="color:#fff;"></b> л/100км</div>
-                        <div><i class="fa-solid fa-satellite-dish" style="color: #2196F3;"></i> Радар: <b id="car-sheet-rad" style="color:#fff;"></b> км</div>
-                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #444;" id="car-sheet-sleep"></div>
+            <div class="car-sheet-body">
+                <div class="car-sheet-left">
+                    <img id="car-sheet-img" src="" class="car-sheet-main-img">
+                    <div class="car-stats-list">
+                        <div class="car-stat-row"><i class="fa-solid fa-gas-pump" style="color: #FF5722;"></i> Бак: <b id="car-sheet-tank"></b> л.</div>
+                        <div class="car-stat-row"><i class="fa-solid fa-fire-flame-simple" style="color: #FFEB3B;"></i> Расход: <b id="car-sheet-cons"></b> л.</div>
+                        <div class="car-stat-row"><i class="fa-solid fa-satellite-dish" style="color: #2196F3;"></i> Радар: <b id="car-sheet-rad"></b> км</div>
+                        <div id="car-sheet-sleep" class="car-stat-row car-sleep-info"></div>
                     </div>
                 </div>
                 
-                <div style="flex: 2; min-width: 300px; padding: 20px; text-align: left;">
-                    <div style="color: #4CAF50; font-weight: bold; margin-bottom: 10px; font-size: 14px;"><i class="fa-solid fa-users"></i> ПАССАЖИРЫ (Скоро)</div>
-                    <div style="display: flex; gap: 10px; margin-bottom: 25px;">
-                        <div style="width: 60px; height: 60px; border: 2px dashed #444; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #444;"><i class="fa-solid fa-user"></i></div>
-                    </div>
-
-                    <div style="color: #FF9800; font-weight: bold; margin-bottom: 10px; font-size: 14px;"><i class="fa-solid fa-box-open"></i> БАГАЖНИК <span id="trunk-capacity" style="color:#fff; font-weight:normal;"></span></div>
-                    <div id="trunk-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px;">
+                <div class="car-sheet-right">
+                    <div class="inventory-section-title"><i class="fa-solid fa-box-open"></i> ГРУЗОВОЙ ОТСЕК <span id="trunk-capacity"></span></div>
+                    <div id="trunk-grid" class="trunk-grid">
                         </div>
                 </div>
             </div>

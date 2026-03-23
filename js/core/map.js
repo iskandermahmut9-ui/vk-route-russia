@@ -2,6 +2,7 @@ import { cfoCities } from '../data/regions/cfo.js';
 
 export const MapModule = {
     initMap: function() {
+        // Карта остается прежней
         this.map = L.map('map', { zoomControl: false }).setView([55.75, 38.0], 6);
         L.control.zoom({position: 'topright'}).addTo(this.map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
@@ -42,22 +43,30 @@ export const MapModule = {
         
         let carIcon = L.divIcon({
             className: 'marker-car', 
-            html: `<img src="assets/cars/${this.state.car.img}" style="width: 40px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7));">`
+            html: `<img src="assets/cars/${this.state.car.img}" alt="Player Car">` // CSS увеличит его
         });
-        // МЕНЯЕМ interactive НА true
+        
+        // --- ПРИНЦИПИАЛЬНОЕ ИЗМЕНЕНИЕ (Для клика) ---
+        // interactive: true ОБЯЗАТЕЛЬНО. zIndexOffset: 1000 - чтобы была поверх городов.
         this.carMarker = L.marker(city.coords, {icon: carIcon, interactive: true, zIndexOffset: 1000}).addTo(this.map);
         
-        // ДОБАВЛЯЕМ КЛИК
+        // Добавляем клик на машину
         this.carMarker.on('click', () => {
-            this.openTrunk();
+            // Кликнуть можно только если машина СТОИТ
+            if (!this.state.isMoving) {
+                this.openTrunk(); // Откроет Паспорт Машины из ui.js
+            } else {
+                this.toast("На скорости копаться в машине нельзя!");
+            }
         });
 
         document.getElementById('city-overlay').style.display = 'none';
-        this.toast(`Старт задан. Выберите следующую цель на карте!`);
+        this.toast(`Старт экспедиции: ${city.name}!`);
         this.saveGame();
     },
 
     confirmTravel: async function(targetCity) {
+        // Логика маршрута без изменений
         const start = this.state.currentCity.coords;
         const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${targetCity.coords[1]},${targetCity.coords[0]}?overview=full&geometries=geojson`;
         
@@ -71,22 +80,22 @@ export const MapModule = {
             
             let modesHtml = `
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 70, 1.0, 1.5)">
-                    <h3 style="color:#8BC34A;">Релакс (70 км/ч)</h3><p>Много интерактива, долгий путь.</p></div>
+                    <h3 style="color:#8BC34A;">Релакс (70 км/ч)</h3><p>Упор на интерактив и события.</p></div>
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 100, 1.0, 1.0)">
                     <h3 style="color:#2196F3;">Оптимальный (100 км/ч)</h3><p>Баланс времени и событий.</p></div>
                 <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 140, 1.5, 0)">
-                    <h3 style="color:#F44336;">Тапка в пол (140 км/ч)</h3><p>Расход х1.5, штрафы, без радара.</p></div>
+                    <h3 style="color:#F44336;">Гонщик (140 км/ч)</h3><p>Частый ДПС, пробитые колеса.</p></div>
             `;
             document.getElementById('drive-modes-container').innerHTML = modesHtml;
             document.getElementById('drive-mode-modal').style.display = 'flex';
-        } catch(e) { this.toast("Ошибка сети. Попробуйте другой город."); }
+        } catch(e) { this.toast("Маршрут заблокирован. Попробуйте другой город."); }
     },
 
     startTravel: function(city, distKm, coords, speed, gasMult, radMult) {
         document.getElementById('drive-mode-modal').style.display = 'none';
         this.state.driveMode = { speed: speed, gasMult: gasMult, radMult: radMult };
         
-        let plannedLine = L.polyline(coords, {color: '#FF5722', weight: 4, opacity: 0.5, dashArray: '5, 10'}).addTo(this.map);
+        let plannedLine = L.polyline(coords, {color: '#FFD700', weight: 4, opacity: 0.6, dashArray: '5, 10'}).addTo(this.map);
         this.routeLines.push(plannedLine);
 
         let gameHours = distKm / speed;
@@ -96,12 +105,10 @@ export const MapModule = {
         let intervalMs = 40;
         let totalTicks = durationMs / intervalMs;
 
-        // ВАЖНО: сохраняем линию отдельно от state, чтобы не сводить с ума Supabase!
         this.activeRouteLine = plannedLine;
 
-        // В state пишем ТОЛЬКО простые данные (без line)
         this.state.travelData = {
-            city: city, coords: coords, // <-- ТУТ БОЛЬШЕ НЕТ line: plannedLine
+            city: city, coords: coords,
             distKm: distKm, currentStep: 0, kmPassedTotal: 0, stepInc: coords.length / totalTicks
         };
 
@@ -114,18 +121,19 @@ export const MapModule = {
 
     resumeTravel: function() {
         let td = this.state.travelData;
-        if (!td) return; // Защита от пустых данных
+        if (!td) return; 
 
-        // Убиваем старый таймер во избежание наслоений
         if (this.animationInterval) clearInterval(this.animationInterval);
 
-        // Восстанавливаем дефолтный режим, если он потерялся при F5
         if (!this.state.driveMode) {
             this.state.driveMode = { speed: 100, gasMult: 1.0, radMult: 1.0 };
         }
 
         this.state.isMoving = true;
         document.getElementById('travel-hud').style.display = 'block';
+        
+        // ЗАКРЫВАЕМ ПАСПОРТ МАШИНЫ, ЕСЛИ ОН ОТКРЫТ
+        document.getElementById('car-modal').style.display = 'none';
 
         this.animationInterval = setInterval(() => {
             td.currentStep += td.stepInc;
@@ -140,7 +148,7 @@ export const MapModule = {
             let pos = [lat, lng];
 
             this.carMarker.setLatLng(pos);
-            if(window.innerWidth > 768) this.map.panTo(pos, {animate: true, duration: 0.1});
+            if(window.innerWidth > 900) this.map.panTo(pos, {animate: true, duration: 0.1});
 
             let tickKm = td.distKm * (td.stepInc / td.coords.length);
             td.kmPassedTotal += tickKm;
@@ -164,47 +172,37 @@ export const MapModule = {
                 clearInterval(this.animationInterval); 
                 this.state.isMoving = false;
                 
-                document.getElementById('event-img').src = `assets/events/moshen.png`;
+                document.getElementById('event-img').src = `assets/events/evakuator.png`; // Сменим картинку
                 document.getElementById('event-title').innerText = "БАК ПУСТ!";
-                document.getElementById('event-desc').innerText = "Машина заглохла. На обочине останавливается мутный тип: 'Слыш, брат, обсох? Дам 10 литров за 140 монет.' Либо вызывайте эвакуатор.";
+                document.getElementById('event-desc').innerText = "Машина заглохла. Либо вызывайте эвакуатор, либо платите мутному типу на обочине за 10 литров бодяги.";
                 
                 let actionsDiv = document.getElementById('event-actions');
                 actionsDiv.innerHTML = '';
                 
                 let btnBuy = document.createElement('button');
-                btnBuy.className = 'btn-action';
+                btnBuy.className = 'btn-action'; btnBuy.style.background = "#FF9800";
                 btnBuy.innerText = "Купить 10л (140 🪙)";
                 btnBuy.onclick = () => {
                     if (this.state.coins >= 140) {
-                        this.state.coins -= 140;
-                        this.state.gas = 10;
-                        this.playFloatingText("-140 🪙", false);
-                        this.updateTopUI();
+                        this.state.coins -= 140; this.state.gas = 10;
+                        this.playFloatingText("-140 🪙", false); this.updateTopUI();
                         document.getElementById('event-modal').style.display='none';
                         this.resumeTravel(); 
-                    } else {
-                        this.toast("У вас нет 140 монет! Ищите другой выход.");
-                    }
+                    } else { this.toast("Не хватает монет!"); }
                 };
                 actionsDiv.appendChild(btnBuy);
 
-                let adLimitStr = `[Осталось ${this.maxAdsPerDay - this.state.adsWatched}]`;
                 let btnTow = document.createElement('button');
-                btnTow.className = 'btn-action';
-                btnTow.style.background = "#2196F3";
-                btnTow.innerText = `Эвакуатор за Рекламу ${adLimitStr}`;
+                btnTow.className = 'btn-action'; btnTow.style.background = "#2196F3";
+                btnTow.innerText = `Эвакуатор в ближ. город (Реклама)`;
                 btnTow.onclick = () => {
-                    if (this.state.adsWatched < this.maxAdsPerDay) {
                         document.getElementById('event-modal').style.display='none';
                         this.watchAd(() => { this.teleportToNearestCity(pos, this.activeRouteLine); });
-                    } else {
-                        this.toast("Лимит рекламы исчерпан!");
-                    }
                 };
                 actionsDiv.appendChild(btnTow);
 
                 let btnDie = document.createElement('button');
-                btnDie.className = 'btn-action btn-leave';
+                btnDie.className = 'btn-action btn-leave reset-btn';
                 btnDie.innerText = "Сдаться (Начать заново)";
                 btnDie.onclick = () => { window.location.reload(); };
                 actionsDiv.appendChild(btnDie);
@@ -307,7 +305,7 @@ export const MapModule = {
 
         this.updateTopUI();
         this.openCityUI(city);
-        this.saveGame(); // Сохраняем прогресс по приезде
+        this.saveGame(); 
     },
 
     updateMarkers: function() {
