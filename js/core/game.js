@@ -18,7 +18,8 @@ export const Game = {
         isMoving: false, hotelPaid: false, excPaid: false,
         driveMode: null, travelData: null, qteActive: false,
         newMedalCity: null,
-        kmSinceEvent: 0, kmSinceQTE: 0
+        kmSinceEvent: 0, kmSinceQTE: 0,
+        inventory: [] // <--- ДОБАВИТЬ ЭТУ СТРОЧКУ
     },
 
     init: async function() {
@@ -35,6 +36,20 @@ export const Game = {
             console.log("Демо-режим"); 
             vkUserId = 123456789; 
         }
+        // Если игрок был в каком-то городе, ставим туда машину
+            if (this.state.currentCity) {
+                let carIcon = L.divIcon({
+                    className: 'marker-car', 
+                    html: `<img src="assets/cars/${this.state.car.img}" style="width: 40px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7));">`
+                });
+                // МЕНЯЕМ interactive НА true
+                this.carMarker = L.marker(this.state.currentCity.coords, {icon: carIcon, interactive: true, zIndexOffset: 1000}).addTo(this.map);
+                
+                // ДОБАВЛЯЕМ КЛИК
+                this.carMarker.on('click', () => {
+                    this.openTrunk();
+                });
+            }
 
         // 1. МГНОВЕННО рисуем карту, чтобы не было серого экрана
         this.initMap();

@@ -157,6 +157,35 @@ export const UIModule = {
         document.body.appendChild(el);
         setTimeout(() => el.remove(), 1500);
     },
+    openTrunk: function() {
+        if (!this.state.car) return;
+        if (this.state.isMoving) { 
+            this.toast("Нельзя открыть багажник на ходу!"); 
+            return; 
+        }
+
+        let maxCap = this.state.car.capacity;
+        let currCap = this.state.inventory.length;
+        document.getElementById('trunk-capacity').innerText = `(${currCap} / ${maxCap} слотов)`;
+
+        let grid = document.getElementById('trunk-grid');
+        grid.innerHTML = '';
+
+        if (currCap === 0) {
+            grid.innerHTML = "<p style='color:#aaa; grid-column: 1 / -1; text-align: center; padding: 20px;'>Багажник пуст. Зайдите на Рынок в любом городе.</p>";
+        } else {
+            this.state.inventory.forEach(invItem => {
+                let itemData = this.getItemData(invItem.id); 
+                grid.innerHTML += `
+                    <div class="album-card" style="border: 1px solid #FF9800; background: #2a2a2a;">
+                        <div style="font-size: 40px;">${itemData.icon}</div>
+                        <div style="font-weight:bold; font-size:12px; margin-top: 5px;">${itemData.name}</div>
+                        <div style="font-size:10px; color:#aaa;">Из: ${invItem.originName}</div>
+                    </div>`;
+            });
+        }
+        document.getElementById('trunk-modal').style.display = 'flex';
+    },
 
     bindEvents: function() {
         document.getElementById('btn-leave-city').onclick = () => this.leaveCity();

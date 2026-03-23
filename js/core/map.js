@@ -44,7 +44,13 @@ export const MapModule = {
             className: 'marker-car', 
             html: `<img src="assets/cars/${this.state.car.img}" style="width: 40px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7));">`
         });
-        this.carMarker = L.marker(city.coords, {icon: carIcon, interactive: false, zIndexOffset: 1000}).addTo(this.map);
+        // МЕНЯЕМ interactive НА true
+        this.carMarker = L.marker(city.coords, {icon: carIcon, interactive: true, zIndexOffset: 1000}).addTo(this.map);
+        
+        // ДОБАВЛЯЕМ КЛИК
+        this.carMarker.on('click', () => {
+            this.openTrunk();
+        });
 
         document.getElementById('city-overlay').style.display = 'none';
         this.toast(`Старт задан. Выберите следующую цель на карте!`);

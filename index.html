@@ -145,6 +145,13 @@
 </div>
 
 <div id="toast-container" class="toast-container"></div>
+<div id="trunk-modal" class="modal-overlay" style="display:none; z-index: 2000;">
+    <div class="modal-box" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+        <div class="modal-head" style="color:#FF9800;">МОЯ МАШИНА <span id="trunk-capacity"></span></div>
+        <div id="trunk-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px;"></div>
+        <button class="btn-action btn-leave" onclick="document.getElementById('trunk-modal').style.display='none'">ЗАКРЫТЬ</button>
+    </div>
+</div>
 
 <script type="module" src="js/main.js"></script>
 </body>
