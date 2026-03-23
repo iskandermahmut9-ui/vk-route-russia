@@ -99,8 +99,9 @@ export const MapModule = {
         // ВАЖНО: сохраняем линию отдельно от state, чтобы не сводить с ума Supabase!
         this.activeRouteLine = plannedLine;
 
+        // В state пишем ТОЛЬКО простые данные (без line)
         this.state.travelData = {
-            city: city, coords: coords,
+            city: city, coords: coords, // <-- ТУТ БОЛЬШЕ НЕТ line: plannedLine
             distKm: distKm, currentStep: 0, kmPassedTotal: 0, stepInc: coords.length / totalTicks
         };
 

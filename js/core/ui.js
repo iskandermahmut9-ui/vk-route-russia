@@ -12,17 +12,16 @@ export const UIModule = {
             div.innerHTML = `
                 <img src="assets/cars/${car.img}" class="car-img" alt="${car.name}">
                 <h3>${car.name}</h3>
-                <p>Бак: ${car.tank}л | Расход: ${car.cons}л<br>Радар: ${car.radius} км</p>
+                <p>Бак: ${car.tank}л | Расход: ${car.cons}л<br>Радар: ${car.radius} км<br>Багажник: ${car.capacity} слотов</p>
             `;
             div.onclick = () => {
                 this.state.car = car;
                 this.state.gas = car.tank;
+                this.state.inventory = []; // Инициализируем пустой багажник
                 document.getElementById('garage-modal').style.display = 'none';
                 document.getElementById('resource-panel').style.display = 'flex';
                 this.updateTopUI();
                 this.toast("Кликните на столицу на карте для старта!");
-                
-                // Мгновенное сохранение после старта!
                 this.saveGame();
             };
             list.appendChild(div);
@@ -43,7 +42,6 @@ export const UIModule = {
         document.getElementById('city-header-img').src = cityImgSrc;
 
         document.getElementById('city-overlay').style.display = 'flex';
-        document.querySelector('.city-panel').scrollTop = 0; 
 
         document.getElementById('city-name').innerText = city.name;
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
@@ -52,7 +50,7 @@ export const UIModule = {
         if (this.state.car.sleepBonus > 0) {
             document.getElementById('hotel-hint').innerText = `В этой машине можно спать (+${this.state.car.sleepBonus}% бодрости).`;
         } else {
-            document.getElementById('hotel-hint').innerText = "Сон в этой машине не восстанавливает бодрость.";
+            document.getElementById('hotel-hint').innerText = "Сон в машине не восстанавливает бодрость.";
         }
 
         let btnAd = document.getElementById('btn-city-ad');
@@ -64,7 +62,7 @@ export const UIModule = {
                     this.playFloatingText("+500 🪙", true);
                     this.updateTopUI();
                     btnAd.innerText = `РЕКЛАМА (+500 🪙) [${this.maxAdsPerDay - this.state.adsWatched}]`;
-                    this.saveGame(); // Сохраняем после просмотра рекламы
+                    this.saveGame();
                 });
             } else {
                 this.toast("Лимит рекламы на сегодня исчерпан!");
@@ -72,7 +70,25 @@ export const UIModule = {
         };
 
         document.getElementById('btn-leave-city').style.display = 'block';
+
+        // СБРОС ВКЛАДОК (Всегда открываем "Услуги" первой)
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector('[data-tab="tab-services"]').classList.add('active');
+        document.getElementById('tab-services').classList.add('active');
+
+        // Отрисовка магазинов и квестов
         this.renderCityShop(city);
+        this.renderCityMayor(city);
+    },
+
+    // Функция для Мэрии (Квесты)
+    renderCityMayor: function(city) {
+        const p = this.prices ? this.prices[city.tier] : { exc: 200 }; // Защита, если prices не прогрузился
+        let html = `<button class="btn-action ${this.state.excPaid ? 'btn-leave' : ''}" style="margin-top:15px;" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.startExcursion(${p.exc})">
+            ${this.state.excPaid ? 'ЭКСКУРСИЯ ПРОЙДЕНА' : 'ВЗЯТЬ ЭКСКУРСИЮ (' + p.exc + ' 🪙)'}
+        </button>`;
+        document.getElementById('city-quests').innerHTML = html;
     },
 
     leaveCity: function() {
@@ -86,7 +102,65 @@ export const UIModule = {
         }
         this.updateTopUI();
         document.getElementById('city-overlay').style.display = 'none';
-        this.saveGame(); // Сохраняем прогресс перед выездом
+        this.saveGame();
+    },
+
+    // НОВОЕ: Окно "Моя Машина"
+    openTrunk: function() {
+        if (!this.state.car) return;
+        if (this.state.isMoving) { 
+            this.toast("Нельзя копаться в машине на ходу!"); 
+            return; 
+        }
+
+        // Заполняем левую часть (статы авто)
+        document.getElementById('car-sheet-name').innerText = this.state.car.name;
+        document.getElementById('car-sheet-img').src = `assets/cars/${this.state.car.img}`;
+        document.getElementById('car-sheet-tank').innerText = this.state.car.tank;
+        document.getElementById('car-sheet-cons').innerText = this.state.car.cons;
+        document.getElementById('car-sheet-rad').innerText = this.state.car.radius;
+
+        let sleepText = this.state.car.sleepBonus > 0 ? 
+            `<span style="color:#8BC34A;"><i class="fa-solid fa-bed"></i> Можно спать (+${this.state.car.sleepBonus}%)</span>` : 
+            `<span style="color:#F44336;"><i class="fa-solid fa-ban"></i> Спать неудобно</span>`;
+        document.getElementById('car-sheet-sleep').innerHTML = sleepText;
+
+        // Заполняем правую часть (багажник)
+        if (!this.state.inventory) this.state.inventory = [];
+        let maxCap = this.state.car.capacity;
+        let currCap = this.state.inventory.length;
+        document.getElementById('trunk-capacity').innerText = `(${currCap} / ${maxCap})`;
+
+        let grid = document.getElementById('trunk-grid');
+        grid.innerHTML = '';
+
+        // Рисуем занятые слоты
+        this.state.inventory.forEach(invItem => {
+            let itemData = this.getItemData(invItem.id); 
+            grid.innerHTML += `
+                <div class="trunk-slot" style="border-color: #FF9800;">
+                    <div class="trunk-slot-icon">${itemData.icon}</div>
+                    <div class="trunk-slot-name">${itemData.name}</div>
+                </div>`;
+        });
+
+        // Дорисовываем пустые слоты для красоты
+        for (let i = currCap; i < maxCap; i++) {
+            grid.innerHTML += `<div class="trunk-slot empty"><i class="fa-solid fa-plus" style="color:#444;"></i></div>`;
+        }
+
+        document.getElementById('car-modal').style.display = 'flex';
+    },
+
+    // НОВОЕ: Сброс игры
+    resetProgress: function() {
+        this.showConfirm("НАЧАТЬ ЗАНОВО?", "Вы потеряете все монеты, товары, авто и альбом. Начать чистую игру?", async () => {
+            this.state.car = null; 
+            this.state.inventory = [];
+            localStorage.clear();  
+            await this.saveGame(); 
+            window.location.reload(); 
+        });
     },
 
     updateTopUI: function() {
@@ -104,12 +178,8 @@ export const UIModule = {
             let el = els[key];
             let displayNode = el.node.querySelector('span');
             displayNode.innerText = Math.round(el.val);
-            
-            if ((el.val / el.max) < 0.3) {
-                el.node.classList.add('danger-pulse');
-            } else {
-                el.node.classList.remove('danger-pulse');
-            }
+            if ((el.val / el.max) < 0.3) el.node.classList.add('danger-pulse');
+            else el.node.classList.remove('danger-pulse');
         }
     },
 
@@ -128,7 +198,7 @@ export const UIModule = {
         let collectedCities = cfoCities.filter(c => this.state.collected.includes(c.id));
         
         if (collectedCities.length === 0) {
-            grid.innerHTML = "<p style='color:#aaa;'>Альбом пока пуст. Оплачивайте отель и экскурсии в городах.</p>";
+            grid.innerHTML = "<p style='color:#aaa; grid-column: 1/-1;'>Альбом пока пуст. Оплачивайте отель и экскурсии в городах.</p>";
         } else {
             collectedCities.forEach(c => {
                 let isNew = (c.id === this.state.newMedalCity);
@@ -157,38 +227,22 @@ export const UIModule = {
         document.body.appendChild(el);
         setTimeout(() => el.remove(), 1500);
     },
-    openTrunk: function() {
-        if (!this.state.car) return;
-        if (this.state.isMoving) { 
-            this.toast("Нельзя открыть багажник на ходу!"); 
-            return; 
-        }
-
-        let maxCap = this.state.car.capacity;
-        let currCap = this.state.inventory.length;
-        document.getElementById('trunk-capacity').innerText = `(${currCap} / ${maxCap} слотов)`;
-
-        let grid = document.getElementById('trunk-grid');
-        grid.innerHTML = '';
-
-        if (currCap === 0) {
-            grid.innerHTML = "<p style='color:#aaa; grid-column: 1 / -1; text-align: center; padding: 20px;'>Багажник пуст. Зайдите на Рынок в любом городе.</p>";
-        } else {
-            this.state.inventory.forEach(invItem => {
-                let itemData = this.getItemData(invItem.id); 
-                grid.innerHTML += `
-                    <div class="album-card" style="border: 1px solid #FF9800; background: #2a2a2a;">
-                        <div style="font-size: 40px;">${itemData.icon}</div>
-                        <div style="font-weight:bold; font-size:12px; margin-top: 5px;">${itemData.name}</div>
-                        <div style="font-size:10px; color:#aaa;">Из: ${invItem.originName}</div>
-                    </div>`;
-            });
-        }
-        document.getElementById('trunk-modal').style.display = 'flex';
-    },
 
     bindEvents: function() {
         document.getElementById('btn-leave-city').onclick = () => this.leaveCity();
         document.getElementById('btn-album').onclick = () => this.openAlbum();
+        document.getElementById('btn-reset').onclick = () => this.resetProgress();
+        
+        // ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                e.target.classList.add('active');
+                let targetId = e.target.getAttribute('data-tab');
+                document.getElementById(targetId).classList.add('active');
+            }
+        });
     }
 };
