@@ -1,8 +1,301 @@
-import { Game } from './core/game.js';
+import { cfoCities } from '../data/regions/cfo.js';
 
-// Делаем Game глобальным, чтобы HTML-кнопки с onclick="Game.buyItem(...)" продолжали работать!
-window.Game = Game; 
+export const MapModule = {
+    initMap: function() {
+        this.map = L.map('map', { zoomControl: false }).setView([55.75, 38.0], 6);
+        L.control.zoom({position: 'topright'}).addTo(this.map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
+    },
 
-document.addEventListener('DOMContentLoaded', () => {
-    Game.init();
-});
+    renderMap: function() {
+        cfoCities.forEach(c => {
+            let isHidden = c.tier === 3;
+            let tierClass = c.tier === 1 ? 'marker-tier-1' : (c.tier === 2 ? 'marker-tier-2' : 'marker-tier-3');
+            if (isHidden) tierClass += ' hidden-tier';
+            
+            let icon = L.divIcon({ 
+                className: `map-pin ${tierClass}`, 
+                html: '<i class="fa-solid fa-location-dot"></i>', 
+                iconSize: [30, 30], iconAnchor: [15,30] 
+            });
+            let m = L.marker(c.coords, {icon: icon}).addTo(this.map);
+            this.markers[c.id] = m;
+
+            m.on('click', () => {
+                if (this.state.isMoving) return;
+                
+                if (!this.state.currentCity) {
+                    this.setStartCity(c);
+                } else if (this.state.currentCity.id === c.id) {
+                    this.openCityUI(c);
+                } else {
+                    this.confirmTravel(c);
+                }
+            });
+        });
+    },
+
+    setStartCity: function(city) {
+        this.state.currentCity = city;
+        this.state.history.push(city.id);
+        this.updateMarkers();
+        
+        let carIcon = L.divIcon({
+            className: 'marker-car', 
+            html: `<img src="assets/cars/${this.state.car.img}" style="width: 40px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7));">`
+        });
+        this.carMarker = L.marker(city.coords, {icon: carIcon, interactive: false, zIndexOffset: 1000}).addTo(this.map);
+
+        document.getElementById('city-overlay').style.display = 'none';
+        this.toast(`Старт задан. Выберите следующую цель на карте!`);
+    },
+
+    confirmTravel: async function(targetCity) {
+        const start = this.state.currentCity.coords;
+        const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${targetCity.coords[1]},${targetCity.coords[0]}?overview=full&geometries=geojson`;
+        
+        try {
+            const res = await fetch(url); const data = await res.json();
+            const distKm = data.routes[0].distance / 1000;
+            const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+
+            document.getElementById('drive-target-name').innerText = targetCity.name;
+            document.getElementById('drive-target-dist').innerText = Math.round(distKm);
+            
+            let modesHtml = `
+                <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 70, 1.0, 1.5)">
+                    <h3 style="color:#8BC34A;">Релакс (70 км/ч)</h3><p>Много интерактива, долгий путь.</p></div>
+                <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 100, 1.0, 1.0)">
+                    <h3 style="color:#2196F3;">Оптимальный (100 км/ч)</h3><p>Баланс времени и событий.</p></div>
+                <div class="diff-card" onclick="Game.startTravel(${JSON.stringify(targetCity).replace(/"/g, '&quot;')}, ${distKm}, ${JSON.stringify(routeCoords)}, 140, 1.5, 0)">
+                    <h3 style="color:#F44336;">Тапка в пол (140 км/ч)</h3><p>Расход х1.5, штрафы, без радара.</p></div>
+            `;
+            document.getElementById('drive-modes-container').innerHTML = modesHtml;
+            document.getElementById('drive-mode-modal').style.display = 'flex';
+        } catch(e) { this.toast("Ошибка сети. Попробуйте другой город."); }
+    },
+
+    startTravel: function(city, distKm, coords, speed, gasMult, radMult) {
+        document.getElementById('drive-mode-modal').style.display = 'none';
+        this.state.driveMode = { speed: speed, gasMult: gasMult, radMult: radMult };
+        
+        let plannedLine = L.polyline(coords, {color: '#FF5722', weight: 4, opacity: 0.5, dashArray: '5, 10'}).addTo(this.map);
+        this.routeLines.push(plannedLine);
+
+        let gameHours = distKm / speed;
+        let realSeconds = (gameHours * 60) / 30; 
+        let durationMs = realSeconds * 1000;
+        
+        let intervalMs = 40;
+        let totalTicks = durationMs / intervalMs;
+
+        this.state.travelData = {
+            city: city, line: plannedLine, coords: coords,
+            distKm: distKm, currentStep: 0, kmPassedTotal: 0, stepInc: coords.length / totalTicks
+        };
+
+        document.getElementById('travel-hud').style.display = 'block';
+        document.getElementById('hud-target').innerText = city.name;
+        document.getElementById('hud-time').innerText = Math.round(gameHours);
+        
+        this.resumeTravel();
+    },
+
+    resumeTravel: function() {
+        let td = this.state.travelData;
+        this.state.isMoving = true;
+        document.getElementById('travel-hud').style.display = 'block';
+
+        this.animationInterval = setInterval(() => {
+            td.currentStep += td.stepInc;
+            if (td.currentStep >= td.coords.length - 1) td.currentStep = td.coords.length - 1;
+
+            let idx = Math.floor(td.currentStep);
+            let nextIdx = Math.min(idx + 1, td.coords.length - 1);
+            let frac = td.currentStep - idx;
+
+            let lat = td.coords[idx][0] + (td.coords[nextIdx][0] - td.coords[idx][0]) * frac;
+            let lng = td.coords[idx][1] + (td.coords[nextIdx][1] - td.coords[idx][1]) * frac;
+            let pos = [lat, lng];
+
+            this.carMarker.setLatLng(pos);
+            if(window.innerWidth > 768) this.map.panTo(pos, {animate: true, duration: 0.1});
+
+            let tickKm = td.distKm * (td.stepInc / td.coords.length);
+            td.kmPassedTotal += tickKm;
+            this.state.kmSinceEvent += tickKm;
+            this.state.kmSinceQTE += tickKm;
+            document.getElementById('hud-dist').innerText = Math.round(td.kmPassedTotal);
+
+            let wakeDrain = (tickKm / 700) * 100;
+            let foodDrain = (tickKm / 700) * 100 * (this.state.car.id !== "bike" ? 1 : 2);
+            let gasDrain = this.state.car.id !== "bike" ? (this.state.car.cons / 100) * tickKm * this.state.driveMode.gasMult : 0;
+            let hpDrain = (tickKm / 100) * this.state.car.hpLoss;
+
+            this.state.wake = Math.max(0, this.state.wake - wakeDrain);
+            this.state.food = Math.max(0, this.state.food - foodDrain);
+            this.state.gas = Math.max(0, this.state.gas - gasDrain);
+            this.state.hp = Math.max(0, this.state.hp - hpDrain);
+
+            this.updateTopUI();
+
+            if (this.state.gas <= 0 && this.state.car.id !== "bike") {
+                clearInterval(this.animationInterval); 
+                this.state.isMoving = false;
+                
+                document.getElementById('event-img').src = `assets/events/moshen.png`;
+                document.getElementById('event-title').innerText = "БАК ПУСТ!";
+                document.getElementById('event-desc').innerText = "Машина заглохла. На обочине останавливается мутный тип: 'Слыш, брат, обсох? Дам 10 литров за 140 монет.' Либо вызывайте эвакуатор.";
+                
+                let actionsDiv = document.getElementById('event-actions');
+                actionsDiv.innerHTML = '';
+                
+                let btnBuy = document.createElement('button');
+                btnBuy.className = 'btn-action';
+                btnBuy.innerText = "Купить 10л (140 🪙)";
+                btnBuy.onclick = () => {
+                    if (this.state.coins >= 140) {
+                        this.state.coins -= 140;
+                        this.state.gas = 10;
+                        this.playFloatingText("-140 🪙", false);
+                        this.updateTopUI();
+                        document.getElementById('event-modal').style.display='none';
+                        this.resumeTravel(); 
+                    } else {
+                        this.toast("У вас нет 140 монет! Ищите другой выход.");
+                    }
+                };
+                actionsDiv.appendChild(btnBuy);
+
+                let adLimitStr = `[Осталось ${this.maxAdsPerDay - this.state.adsWatched}]`;
+                let btnTow = document.createElement('button');
+                btnTow.className = 'btn-action';
+                btnTow.style.background = "#2196F3";
+                btnTow.innerText = `Эвакуатор за Рекламу ${adLimitStr}`;
+                btnTow.onclick = () => {
+                    if (this.state.adsWatched < this.maxAdsPerDay) {
+                        document.getElementById('event-modal').style.display='none';
+                        this.watchAd(() => { this.teleportToNearestCity(pos, td.line); });
+                    } else {
+                        this.toast("Лимит рекламы исчерпан!");
+                    }
+                };
+                actionsDiv.appendChild(btnTow);
+
+                let btnDie = document.createElement('button');
+                btnDie.className = 'btn-action btn-leave';
+                btnDie.innerText = "Сдаться (Начать заново)";
+                btnDie.onclick = () => { window.location.reload(); };
+                actionsDiv.appendChild(btnDie);
+
+                document.getElementById('event-modal').style.display = 'flex';
+                return;
+            }
+
+            if (this.state.wake <= 0) td.stepInc = (td.coords.length / totalTicks) * 0.2; 
+
+            if (this.state.kmSinceQTE >= 70 && !this.state.qteActive) {
+                this.state.kmSinceQTE = 0;
+                this.spawnQTE(); 
+            }
+
+            if (this.state.kmSinceEvent >= 150 && !this.state.qteActive) {
+                this.state.kmSinceEvent = 0;
+                clearInterval(this.animationInterval); 
+                this.state.isMoving = false;
+                this.triggerStoryEvent();
+                return;
+            }
+
+            if (this.state.driveMode.radMult > 0) {
+                for (let c of cfoCities) {
+                    if (c.id !== td.city.id && c.id !== this.state.currentCity.id && !this.state.history.includes(c.id)) {
+                        let distanceMeters = this.map.distance(pos, c.coords);
+                        let radar = this.state.car.radius * this.state.driveMode.radMult * 1000;
+                        if (distanceMeters <= radar) {
+                            clearInterval(this.animationInterval);
+                            this.state.isMoving = false;
+                            this.triggerPassingCity(c);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            if (td.currentStep >= td.coords.length - 1) {
+                clearInterval(this.animationInterval);
+                this.finishTravel(td.city, td.line);
+            }
+        }, 40);
+    },
+
+    teleportToNearestCity: function(currentPos, currentLine) {
+        let minDist = Infinity;
+        let closestCity = null;
+        cfoCities.forEach(c => {
+            let dist = this.map.distance(currentPos, c.coords);
+            if (dist < minDist) { minDist = dist; closestCity = c; }
+        });
+
+        this.toast(`Вас отбуксировали в: ${closestCity.name}`);
+        this.map.removeLayer(currentLine); 
+        this.carMarker.setLatLng(closestCity.coords);
+        this.map.panTo(closestCity.coords);
+        
+        this.state.gas = 2; 
+        this.finishTravel(closestCity, currentLine); 
+    },
+
+    detourToCity: async function(passingCity) {
+        let td = this.state.travelData;
+        let currentPos = this.carMarker.getLatLng();
+
+        this.map.removeLayer(td.line);
+        let drivenCoords = td.coords.slice(0, Math.floor(td.currentStep) + 1);
+        drivenCoords.push([currentPos.lat, currentPos.lng]);
+        let drivenLine = L.polyline(drivenCoords, {color: '#555', weight: 3, dashArray: '5, 10'}).addTo(this.map);
+        this.routeLines.push(drivenLine);
+
+        this.toast(`Перестраиваем маршрут в ${passingCity.name}...`);
+        const url = `https://router.project-osrm.org/route/v1/driving/${currentPos.lng},${currentPos.lat};${passingCity.coords[1]},${passingCity.coords[0]}?overview=full&geometries=geojson`;
+
+        try {
+            const res = await fetch(url); const data = await res.json();
+            const newDistKm = data.routes[0].distance / 1000;
+            const newCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+            this.startTravel(passingCity, newDistKm, newCoords, this.state.driveMode.speed, this.state.driveMode.gasMult, this.state.driveMode.radMult);
+        } catch(e) {
+            td.line.addTo(this.map);
+            this.resumeTravel();
+        }
+    },
+
+    finishTravel: function(city, line) {
+        this.state.isMoving = false;
+        this.state.currentCity = city;
+        this.state.history.push(city.id);
+        document.getElementById('travel-hud').style.display = 'none';
+        
+        if(line) line.setStyle({color: '#555', weight: 3, dashArray: '5, 10', opacity: 1});
+        this.updateMarkers();
+        
+        Object.keys(this.markers).forEach(id => {
+            this.markers[id].getElement().classList.remove('marker-current');
+            if (id === city.id) this.markers[id].getElement().classList.add('marker-current');
+        });
+
+        this.updateTopUI();
+        this.openCityUI(city);
+    },
+
+    updateMarkers: function() {
+        Object.keys(this.markers).forEach(id => {
+            let m = this.markers[id];
+            let el = m.getElement();
+            if(!el) return;
+            if (this.state.collected.includes(id)) {
+                el.className = 'map-pin marker-collected leaflet-marker-icon leaflet-zoom-animated leaflet-interactive';
+            }
+        });
+    }
+};
