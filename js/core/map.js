@@ -83,7 +83,7 @@ export const MapModule = {
         this.routeLines.push(plannedLine);
 
         let gameHours = distKm / speed;
-        let realSeconds = (gameHours * 60) / 30; 
+        let realSeconds = (gameHours * 60) / 10; 
         let durationMs = realSeconds * 1000;
         
         let intervalMs = 40;
@@ -286,6 +286,7 @@ export const MapModule = {
 
         this.updateTopUI();
         this.openCityUI(city);
+        this.saveGame()
     },
 
     updateMarkers: function() {

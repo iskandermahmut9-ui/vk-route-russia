@@ -105,6 +105,7 @@ export const EconomyModule = {
         this.updateTopUI();
         this.checkCityCompletion();
         this.renderCityShop(this.state.currentCity);
+        this.saveGame()
     },
 
     startExcursion: function(price) {
