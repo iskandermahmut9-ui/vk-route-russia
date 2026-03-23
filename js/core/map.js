@@ -48,6 +48,7 @@ export const MapModule = {
 
         document.getElementById('city-overlay').style.display = 'none';
         this.toast(`Старт задан. Выберите следующую цель на карте!`);
+        this.saveGame();
     },
 
     confirmTravel: async function(targetCity) {
@@ -286,7 +287,7 @@ export const MapModule = {
 
         this.updateTopUI();
         this.openCityUI(city);
-        this.saveGame()
+        this.saveGame();
     },
 
     updateMarkers: function() {

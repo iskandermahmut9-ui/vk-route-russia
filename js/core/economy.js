@@ -105,7 +105,7 @@ export const EconomyModule = {
         this.updateTopUI();
         this.checkCityCompletion();
         this.renderCityShop(this.state.currentCity);
-        this.saveGame()
+        this.saveGame();
     },
 
     startExcursion: function(price) {
@@ -114,6 +114,7 @@ export const EconomyModule = {
         this.state.coins -= price;
         this.playFloatingText(`-${price} 🪙`, false);
         this.updateTopUI();
+        this.saveGame();
         
         let guideImg = Math.random() > 0.5 ? "guide_m.png" : "guide_f.png";
         document.getElementById('quest-guide-img').src = `assets/quests/${guideImg}`;

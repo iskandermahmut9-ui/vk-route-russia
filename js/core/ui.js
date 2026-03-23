@@ -21,6 +21,8 @@ export const UIModule = {
                 document.getElementById('resource-panel').style.display = 'flex';
                 this.updateTopUI();
                 this.toast("Кликните на столицу на карте для старта!");
+                
+                this.saveGame(); // <--- ВОТ ЭТА СТРОЧКА СОХРАНИТ МАШИНУ
             };
             list.appendChild(div);
         });

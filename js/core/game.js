@@ -29,36 +29,41 @@ export const Game = {
                 await vkBridge.send('VKWebAppInit'); 
                 const user = await vkBridge.send('VKWebAppGetUserInfo');
                 document.getElementById('player-name').innerText = user.first_name;
-                vkUserId = user.id; // Достаем реальный ID игрока
+                vkUserId = user.id; 
             }
         } catch (e) { 
-            console.log("Демо-режим (вне ВК)"); 
-            vkUserId = 123456789; // Тестовый ID для проверки в браузере
+            console.log("Демо-режим"); 
+            vkUserId = 123456789; 
         }
 
-        // 1. Сначала загружаем данные из облака!
-        await this.initStorage(vkUserId);
-
-        // 2. Только потом собираем карту и остальное
+        // 1. МГНОВЕННО рисуем карту, чтобы не было серого экрана
         this.initMap();
         this.checkDailyLimits();
         this.renderMap();
         this.bindEvents();
 
-        // 3. Логика старта:
+        // 2. Идем в базу данных за сохранением
+        await this.initStorage(vkUserId);
+
+        // 3. После загрузки - обновляем цвета городов на карте
+        this.updateMarkers();
+
+        // 4. Распределяем логику: новая игра или продолжение
         if (!this.state.car) {
-            // Если машины нет (новая игра) — показываем выбор сложности
+            // Новая игра - выбираем машину
             document.getElementById('difficulty-modal').style.display = 'flex';
         } else {
-            // Если машина есть (загрузили из базы) — сразу показываем интерфейс
+            // Продолжение - показываем ресурсы
             document.getElementById('resource-panel').style.display = 'flex';
             this.updateTopUI();
             
-            // Если игрок сохранился посреди поездки — восстанавливаем маршрут (задел на будущее)
-            if (this.state.isMoving) {
-                 this.toast("Вы вернулись в пути!");
-            } else if (this.state.currentCity) {
-                 this.openCityUI(this.state.currentCity);
+            // Если игрок был в каком-то городе, ставим туда машину
+            if (this.state.currentCity) {
+                let carIcon = L.divIcon({
+                    className: 'marker-car', 
+                    html: `<img src="assets/cars/${this.state.car.img}" style="width: 40px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7));">`
+                });
+                this.carMarker = L.marker(this.state.currentCity.coords, {icon: carIcon, interactive: false, zIndexOffset: 1000}).addTo(this.map);
             }
         }
     },
