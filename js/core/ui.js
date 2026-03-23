@@ -47,11 +47,7 @@ export const UIModule = {
         document.getElementById('city-tier').innerText = `Уровень ${city.tier}`;
         document.getElementById('city-fact').innerText = city.fact;
         
-        if (this.state.car.sleepBonus > 0) {
-            document.getElementById('hotel-hint').innerText = `В этой машине можно спать (+${this.state.car.sleepBonus}% бодрости).`;
-        } else {
-            document.getElementById('hotel-hint').innerText = "Сон в машине не восстанавливает бодрость.";
-        }
+        // ❌ ЗДЕСЬ БЫЛ БАГ С HOTEL-HINT. ОН УДАЛЕН. ❌
 
         let btnAd = document.getElementById('btn-city-ad');
         btnAd.innerText = `РЕКЛАМА (+500 🪙) [${this.maxAdsPerDay - this.state.adsWatched}]`;
@@ -69,6 +65,7 @@ export const UIModule = {
             }
         };
 
+        // Гарантированно показываем кнопку выхода
         document.getElementById('btn-leave-city').style.display = 'block';
 
         // СБРОС ВКЛАДОК (Всегда открываем "Услуги" первой)
@@ -82,9 +79,8 @@ export const UIModule = {
         this.renderCityMayor(city);
     },
 
-    // Функция для Мэрии (Квесты)
     renderCityMayor: function(city) {
-        const p = this.prices ? this.prices[city.tier] : { exc: 200 }; // Защита, если prices не прогрузился
+        const p = this.prices ? this.prices[city.tier] : { exc: 200 }; 
         let html = `<button class="btn-action ${this.state.excPaid ? 'btn-leave' : ''}" style="margin-top:15px;" ${this.state.excPaid ? 'disabled' : ''} onclick="Game.startExcursion(${p.exc})">
             ${this.state.excPaid ? 'ЭКСКУРСИЯ ПРОЙДЕНА' : 'ВЗЯТЬ ЭКСКУРСИЮ (' + p.exc + ' 🪙)'}
         </button>`;
@@ -105,7 +101,6 @@ export const UIModule = {
         this.saveGame();
     },
 
-    // НОВОЕ: Окно "Моя Машина"
     openTrunk: function() {
         if (!this.state.car) return;
         if (this.state.isMoving) { 
@@ -113,7 +108,6 @@ export const UIModule = {
             return; 
         }
 
-        // Заполняем левую часть (статы авто)
         document.getElementById('car-sheet-name').innerText = this.state.car.name;
         document.getElementById('car-sheet-img').src = `assets/cars/${this.state.car.img}`;
         document.getElementById('car-sheet-tank').innerText = this.state.car.tank;
@@ -125,7 +119,6 @@ export const UIModule = {
             `<span style="color:#F44336;"><i class="fa-solid fa-ban"></i> Спать неудобно</span>`;
         document.getElementById('car-sheet-sleep').innerHTML = sleepText;
 
-        // Заполняем правую часть (багажник)
         if (!this.state.inventory) this.state.inventory = [];
         let maxCap = this.state.car.capacity;
         let currCap = this.state.inventory.length;
@@ -134,17 +127,17 @@ export const UIModule = {
         let grid = document.getElementById('trunk-grid');
         grid.innerHTML = '';
 
-        // Рисуем занятые слоты
         this.state.inventory.forEach(invItem => {
             let itemData = this.getItemData(invItem.id); 
-            grid.innerHTML += `
-                <div class="trunk-slot" style="border-color: #FF9800;">
-                    <div class="trunk-slot-icon">${itemData.icon}</div>
-                    <div class="trunk-slot-name">${itemData.name}</div>
-                </div>`;
+            if (itemData) {
+                grid.innerHTML += `
+                    <div class="trunk-slot" style="border-color: #FF9800;">
+                        <div class="trunk-slot-icon">${itemData.icon}</div>
+                        <div class="trunk-slot-name">${itemData.name}</div>
+                    </div>`;
+            }
         });
 
-        // Дорисовываем пустые слоты для красоты
         for (let i = currCap; i < maxCap; i++) {
             grid.innerHTML += `<div class="trunk-slot empty"><i class="fa-solid fa-plus" style="color:#444;"></i></div>`;
         }
@@ -152,7 +145,6 @@ export const UIModule = {
         document.getElementById('car-modal').style.display = 'flex';
     },
 
-    // НОВОЕ: Сброс игры
     resetProgress: function() {
         this.showConfirm("НАЧАТЬ ЗАНОВО?", "Вы потеряете все монеты, товары, авто и альбом. Начать чистую игру?", async () => {
             this.state.car = null; 
@@ -218,6 +210,8 @@ export const UIModule = {
         c.innerHTML = ''; 
         let t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
         c.appendChild(t); 
+        // 🛠 ФИКС ЗАВИСАНИЯ ПЛАШКИ: Теперь она исчезает сама через 2.5 секунды
+        setTimeout(() => { if (t.parentNode) t.remove(); }, 2500);
     },
 
     playFloatingText: function(text, isPositive) {
@@ -233,7 +227,6 @@ export const UIModule = {
         document.getElementById('btn-album').onclick = () => this.openAlbum();
         document.getElementById('btn-reset').onclick = () => this.resetProgress();
         
-        // ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.onclick = (e) => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
