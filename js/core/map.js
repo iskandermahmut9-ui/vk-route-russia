@@ -90,8 +90,11 @@ export const MapModule = {
         let intervalMs = 40;
         let totalTicks = durationMs / intervalMs;
 
+        // ВАЖНО: сохраняем линию отдельно от state, чтобы не сводить с ума Supabase!
+        this.activeRouteLine = plannedLine;
+
         this.state.travelData = {
-            city: city, line: plannedLine, coords: coords,
+            city: city, coords: coords,
             distKm: distKm, currentStep: 0, kmPassedTotal: 0, stepInc: coords.length / totalTicks
         };
 
@@ -104,6 +107,16 @@ export const MapModule = {
 
     resumeTravel: function() {
         let td = this.state.travelData;
+        if (!td) return; // Защита от пустых данных
+
+        // Убиваем старый таймер во избежание наслоений
+        if (this.animationInterval) clearInterval(this.animationInterval);
+
+        // Восстанавливаем дефолтный режим, если он потерялся при F5
+        if (!this.state.driveMode) {
+            this.state.driveMode = { speed: 100, gasMult: 1.0, radMult: 1.0 };
+        }
+
         this.state.isMoving = true;
         document.getElementById('travel-hud').style.display = 'block';
 
@@ -176,7 +189,7 @@ export const MapModule = {
                 btnTow.onclick = () => {
                     if (this.state.adsWatched < this.maxAdsPerDay) {
                         document.getElementById('event-modal').style.display='none';
-                        this.watchAd(() => { this.teleportToNearestCity(pos, td.line); });
+                        this.watchAd(() => { this.teleportToNearestCity(pos, this.activeRouteLine); });
                     } else {
                         this.toast("Лимит рекламы исчерпан!");
                     }
@@ -225,7 +238,7 @@ export const MapModule = {
 
             if (td.currentStep >= td.coords.length - 1) {
                 clearInterval(this.animationInterval);
-                this.finishTravel(td.city, td.line);
+                this.finishTravel(td.city, this.activeRouteLine);
             }
         }, 40);
     },
@@ -239,7 +252,7 @@ export const MapModule = {
         });
 
         this.toast(`Вас отбуксировали в: ${closestCity.name}`);
-        this.map.removeLayer(currentLine); 
+        if (currentLine) this.map.removeLayer(currentLine); 
         this.carMarker.setLatLng(closestCity.coords);
         this.map.panTo(closestCity.coords);
         
@@ -251,7 +264,7 @@ export const MapModule = {
         let td = this.state.travelData;
         let currentPos = this.carMarker.getLatLng();
 
-        this.map.removeLayer(td.line);
+        if (this.activeRouteLine) this.map.removeLayer(this.activeRouteLine);
         let drivenCoords = td.coords.slice(0, Math.floor(td.currentStep) + 1);
         drivenCoords.push([currentPos.lat, currentPos.lng]);
         let drivenLine = L.polyline(drivenCoords, {color: '#555', weight: 3, dashArray: '5, 10'}).addTo(this.map);
@@ -266,7 +279,7 @@ export const MapModule = {
             const newCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
             this.startTravel(passingCity, newDistKm, newCoords, this.state.driveMode.speed, this.state.driveMode.gasMult, this.state.driveMode.radMult);
         } catch(e) {
-            td.line.addTo(this.map);
+            if (this.activeRouteLine) this.activeRouteLine.addTo(this.map);
             this.resumeTravel();
         }
     },
@@ -287,7 +300,7 @@ export const MapModule = {
 
         this.updateTopUI();
         this.openCityUI(city);
-        this.saveGame();
+        this.saveGame(); // Сохраняем прогресс по приезде
     },
 
     updateMarkers: function() {

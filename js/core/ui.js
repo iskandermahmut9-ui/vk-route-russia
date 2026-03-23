@@ -22,7 +22,8 @@ export const UIModule = {
                 this.updateTopUI();
                 this.toast("Кликните на столицу на карте для старта!");
                 
-                this.saveGame(); // <--- ВОТ ЭТА СТРОЧКА СОХРАНИТ МАШИНУ
+                // Мгновенное сохранение после старта!
+                this.saveGame();
             };
             list.appendChild(div);
         });
@@ -63,6 +64,7 @@ export const UIModule = {
                     this.playFloatingText("+500 🪙", true);
                     this.updateTopUI();
                     btnAd.innerText = `РЕКЛАМА (+500 🪙) [${this.maxAdsPerDay - this.state.adsWatched}]`;
+                    this.saveGame(); // Сохраняем после просмотра рекламы
                 });
             } else {
                 this.toast("Лимит рекламы на сегодня исчерпан!");
@@ -84,6 +86,7 @@ export const UIModule = {
         }
         this.updateTopUI();
         document.getElementById('city-overlay').style.display = 'none';
+        this.saveGame(); // Сохраняем прогресс перед выездом
     },
 
     updateTopUI: function() {
