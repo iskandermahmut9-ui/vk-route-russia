@@ -37,17 +37,18 @@ export const Game = {
             vkUserId = 123456789; 
         }
         // Если игрок был в каком-то городе, ставим туда машину
+            // Если игрок был в каком-то городе, ставим туда БОЛЬШУЮ машину
             if (this.state.currentCity) {
                 let carIcon = L.divIcon({
                     className: 'marker-car', 
-                    html: `<img src="assets/cars/${this.state.car.img}" style="width: 40px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7));">`
+                    html: `<img src="assets/cars/${this.state.car.img}" style="width: 80px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7)); pointer-events: auto;">`
                 });
-                // МЕНЯЕМ interactive НА true
+                
                 this.carMarker = L.marker(this.state.currentCity.coords, {icon: carIcon, interactive: true, zIndexOffset: 1000}).addTo(this.map);
                 
-                // ДОБАВЛЯЕМ КЛИК
+                // Восстанавливаем клик после загрузки страницы
                 this.carMarker.on('click', () => {
-                    this.openTrunk();
+                    if (!this.state.isMoving) this.openTrunk();
                 });
             }
 

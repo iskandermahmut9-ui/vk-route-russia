@@ -41,27 +41,26 @@ export const MapModule = {
         this.state.history.push(city.id);
         this.updateMarkers();
         
+        // ДЕЛАЕМ МАШИНУ 80px (В 2 раза больше)
         let carIcon = L.divIcon({
             className: 'marker-car', 
-            html: `<img src="assets/cars/${this.state.car.img}" alt="Player Car">` // CSS увеличит его
+            html: `<img src="assets/cars/${this.state.car.img}" style="width: 80px; height: auto; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.7)); pointer-events: auto;">`
         });
         
-        // --- ПРИНЦИПИАЛЬНОЕ ИЗМЕНЕНИЕ (Для клика) ---
-        // interactive: true ОБЯЗАТЕЛЬНО. zIndexOffset: 1000 - чтобы была поверх городов.
+        // ВАЖНО: interactive: true 
         this.carMarker = L.marker(city.coords, {icon: carIcon, interactive: true, zIndexOffset: 1000}).addTo(this.map);
         
-        // Добавляем клик на машину
+        // ВАЖНО: Вешаем клик, открывающий багажник
         this.carMarker.on('click', () => {
-            // Кликнуть можно только если машина СТОИТ
             if (!this.state.isMoving) {
-                this.openTrunk(); // Откроет Паспорт Машины из ui.js
+                this.openTrunk();
             } else {
-                this.toast("На скорости копаться в машине нельзя!");
+                this.toast("На скорости в багажник не лезут!");
             }
         });
 
         document.getElementById('city-overlay').style.display = 'none';
-        this.toast(`Старт экспедиции: ${city.name}!`);
+        this.toast(`Старт задан. Выберите следующую цель на карте!`);
         this.saveGame();
     },
 

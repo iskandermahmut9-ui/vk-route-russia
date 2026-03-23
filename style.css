@@ -256,3 +256,16 @@ body.vk-dark { --vk-bg: #141414; --vk-panel-bg: #222222; }
     .tab-btn { font-size: 10px; padding: 10px 8px; }
     .tab-btn i { font-size: 12px; }
 }
+/* --- ФИКС ВИЗУАЛА (СКРОЛЛБАРЫ, ВКЛАДКИ И РАЗМЕРЫ) --- */
+/* Прячем системные скроллбары для современного вида */
+::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+* { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* Фикс высоты окон, чтобы они не улетали за верхний край */
+.modal-box, .city-panel.modern-panel { max-height: 85vh !important; display: flex; flex-direction: column; }
+.tabs-container { max-height: 45vh !important; overflow-y: auto; padding-right: 5px; }
+
+/* Делаем вкладки одинакового размера */
+.tabs-nav { justify-content: space-between; }
+.tab-btn { flex: 1; text-align: center; justify-content: center; font-size: 11px; padding: 12px 2px; }
+@media screen and (max-width: 900px) { .tab-btn { font-size: 9px; } }
